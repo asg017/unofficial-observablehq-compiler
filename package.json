@@ -1,0 +1,32 @@
+{
+  "name": "@alex.garcia/unofficial-observablehq-compiler",
+  "version": "0.0.0",
+  "description": "An unofficial compiler to bind @observablehq/parser and @observablehq/runtime",
+  "main": "index.js",
+  "author": "Alex Garcia <alexsebastian.garcia@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asg017/unofficial-observablehq-compiler.git"
+  },
+  "license": "ISC",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "test": "tape -r esm 'test/**/*-test.js'",
+    "prepublishOnly": "rm index.js && rollup -c",
+    "postpublish": "git push && git push --tags"
+  },
+  "dependencies": {
+    "@observablehq/parser": "^1.2.1",
+    "@observablehq/runtime": "^4.4.4"
+  },
+  "devDependencies": {
+    "rollup": "^1.21.2",
+    "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-node-resolve": "^5.2.0"
+  }
+}
