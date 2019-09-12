@@ -1,6 +1,6 @@
 {
   "name": "@alex.garcia/unofficial-observablehq-compiler",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "An unofficial compiler to bind @observablehq/parser and @observablehq/runtime",
   "main": "index.js",
   "author": "Alex Garcia <alexsebastian.garcia@gmail.com>",
