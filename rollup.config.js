@@ -9,6 +9,12 @@ export default {
       file: "index.js",
       format: "umd",
       name: "index.js"
+    },
+    {
+      compact: true,
+      file: "index-esm.js",
+      format: "esm",
+      name: "esm"
     }
   ],
   plugins: [node(), commonjs()]

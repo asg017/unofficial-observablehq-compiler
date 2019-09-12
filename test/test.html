@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+
+<head>
+  <link
+    rel="stylesheet"
+    type="text/css"
+    href="https://cdn.jsdelivr.net/npm/@observablehq/inspector@3/dist/inspector.css"
+  />
+</head>
+<body class="O--body">
+  <div id="main"></div>
+  <script type="module">
+    import {
+      Runtime,
+      Inspector
+    } from "https://cdn.jsdelivr.net/npm/@observablehq/runtime@4/dist/runtime.js";
+    import { Compiler } from "/index-esm.js";
+
+    const compile = new Compiler();
+    const define = compile.module(`
+    a = 1
+
+    b = 2
+
+    c = a + b
+
+    md\` This cell contains **markdown**
+
+- ~isn't~
+- *this*
+- [cool](https://www.youtube.com/watch?v=dQw4w9WgXcQ)?
+
+    \`
+
+    {
+      let i = 1;
+      while(i) {
+        yield Promises.tick(100, ++i);
+      }
+    }
+
+    d3 = require('d3-array')
+
+    html\`<img src="https://images.dog.ceo/breeds/dhole/n02115913_4117.jpg" width="100">\`
+
+
+    import {ramp} from "@mbostock/color-ramp"
+
+    ramp(t => \`hsl(\${t * 360}, 100%, 50%)\`)
+
+    import {map} from "@d3/interrupted-sinu-mollweide"
+
+    map
+
+    import {giraffe} from "https://observablehq.com/@lemonnish/animated-canvas-layers"
+
+    giraffe
+
+    import {chart} from "d43fa2a122cc9fbf"
+
+    chart
+
+    localImage = new Promise((resolve, reject) => {
+      const image = new Image;
+      image.style = "height: 60px; display: block;";
+      image.crossOrigin = "anonymous";
+      image.onerror = reject;
+      image.onload = () => resolve(image);
+      image.src = "https://avatars0.githubusercontent.com/u/15178711?v=4";
+    })
+
+    import {chart as histogram} with {localImage as image} from "https://api.observablehq.com/@d3/mona-lisa-histogram.js"
+
+    histogram
+`);
+
+    const rt = new Runtime();
+    rt.module(define, Inspector.into(document.querySelector("#main")));
+  </script>
+</body>

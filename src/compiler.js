@@ -109,7 +109,7 @@ const createModuleDefintion = (m, resolveModule) => {
   };
 };
 
-const defaultResolver = path => {
+const defaultResolver = async path => {
   const source = extractPath(path);
   return import(`https://api.observablehq.com/${source}.js?v=3`).then(
     m => m.default

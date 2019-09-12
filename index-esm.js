@@ -1,4 +1,4 @@
-(function(g,f){typeof exports==='object'&&typeof module!=='undefined'?f(exports):typeof define==='function'&&define.amd?define(['exports'],f):(g=g||self,f((g.index=g.index||{},g.index.js={})));}(this,function(exports){'use strict';// Reserved word lists for various dialects of the language
+// Reserved word lists for various dialects of the language
 
 var reservedWords = {
   3: "abstract boolean byte char class double enum export extends final float goto implements import int interface long native package private protected public short static super synchronized throws transient volatile",
@@ -8636,4 +8636,4 @@ class Compiler {
     const m1 = parseModule(text);
     return createModuleDefintion(m1, this.resolve);
   }
-}exports.Compiler=Compiler;Object.defineProperty(exports,'__esModule',{value:true});}));
+}export{Compiler};
