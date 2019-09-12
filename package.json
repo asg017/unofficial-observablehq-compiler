@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "test": "tape -r esm 'test/**/*-test.js'",
-    "prepublishOnly": "rm index.js && rollup -c",
+    "prepublishOnly": "rm -f index.js && rollup -c",
     "postpublish": "git push && git push --tags"
   },
   "dependencies": {

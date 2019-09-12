@@ -1,5 +1,6 @@
 import { parseCell, parseModule } from "@observablehq/parser";
 import { Library } from "@observablehq/runtime";
+import { extractPath } from "./utils";
 
 const { Generators } = new Library();
 
@@ -108,8 +109,15 @@ const createModuleDefintion = (m, resolveModule) => {
   };
 };
 
+const defaultResolver = path => {
+  const source = extractPath(path);
+  return import(`https://api.observablehq.com/${source}.js?v=3`).then(
+    m => m.default
+  );
+};
+
 export class Compiler {
-  constructor(resolve) {
+  constructor(resolve = defaultResolver) {
     this.resolve = resolve;
   }
   cell(text) {
