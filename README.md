@@ -1,4 +1,4 @@
-# @alex.garcia/unofficial-observablehq-compiler
+# @alex.garcia/unofficial-observablehq-compiler [![CircleCI](https://circleci.com/gh/asg017/unofficial-observablehq-compiler.svg?style=svg)](https://circleci.com/gh/asg017/unofficial-observablehq-compiler)
 
 An unoffical compiler for Observable notebooks (glue between the Observable parser and runtime)
 
