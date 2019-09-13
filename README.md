@@ -6,10 +6,10 @@ This compiler will compile "observable syntax" into "javascript syntax".
 For example -
 
 ```javascript
-import { Compiler } from "@alex.garcia/unofficial-observablehq-compiler";
+import compiler from "@alex.garcia/unofficial-observablehq-compiler";
 import { Inspector, Runtime } from "@observablehq/runtime";
 
-const compile = new Compiler();
+const compile = new compiler.Compiler();
 
 const define = compile.module(`
 import {text} from '@jashkenas/inputs'
@@ -30,12 +30,6 @@ const module = runtime.module(define, Inpsector.into(document.body));
 
 For more live examples and functionality, take a look at the [announcement notebook](https://observablehq.com/d/74f872c4fde62e35)
 and this [test page](https://github.com/asg017/unofficial-observablehq-compiler/blob/master/test/test.html).
-
-## Contributing
-
-Feel free to send in PR's as you wish! Take a look at the [issues](https://github.com/asg017/unofficial-observablehq-compiler/issues)
-to find something to work on. Just please follow the [Contributor Covenant](https://www.contributor-covenant.org/)
-in all your interactions :smile:
 
 ## API Reference
 
@@ -101,3 +95,9 @@ libraries licensed under ISC:
 - [@observablehq/stdlib](https://github.com/observablehq/stdlib)
 - [@observablehq/inspector](https://github.com/observablehq/inspector)
 - [@observablehq/parser](https://github.com/observablehq/parser)
+
+## Contributing
+
+Feel free to send in PR's as you wish! Take a look at the [issues](https://github.com/asg017/unofficial-observablehq-compiler/issues)
+to find something to work on. Just please follow the [Contributor Covenant](https://www.contributor-covenant.org/)
+in all your interactions :smile:

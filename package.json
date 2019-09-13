@@ -17,9 +17,18 @@
   ],
   "scripts": {
     "test": "tape 'test/**/*-test.js'",
+    "test-html": "http-server",
     "prepublishOnly": "rm -f index.js && rollup -c",
     "postpublish": "git push && git push --tags"
   },
+  "keywords": [
+    "observable",
+    "observablehq",
+    "observable-notebooks",
+    "notebooks",
+    "parser",
+    "compiler"
+  ],
   "dependencies": {
     "@observablehq/parser": "^1.2.1",
     "@observablehq/runtime": "^4.4.4"
