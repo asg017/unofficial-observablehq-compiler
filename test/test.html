@@ -92,6 +92,40 @@
     import {chart as histogram} with {localImage as image} from "https://api.observablehq.com/@d3/mona-lisa-histogram.js"
 
     histogram
+
+    import {viewof message} from "https://observablehq.com/@observablehq/introduction-to-views"
+
+    viewof message
+
+    message
+
+    import { wrap } from '8135ff976018a995'
+
+    viewof myA = wrap(html\`<input type="number" value="2">\`)
+
+    import { viewof a as a2, b as b2 } with {
+      viewof myA as a
+    } from '8135ff976018a995'
+
+    viewof a2
+
+    viewof a2 === viewof myA
+
+    a2
+
+    b2
+
+    viewof myB = wrap(html\`<input type="number" value="-20">\`)
+
+    import { viewof a as a3, b as b3 } with { myB as a } from '8135ff976018a995'
+
+    viewof a3
+
+    a3
+
+    myB === a3
+
+    b3
 `);
 
     const rt = new Runtime();
