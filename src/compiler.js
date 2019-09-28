@@ -121,7 +121,7 @@ export class Compiler {
     this.resolve = resolve;
   }
   cell(text) {
-    throw Errror(`compile.cell not implemented yet`);
+    throw Error(`compile.cell not implemented yet`);
   }
   module(text) {
     const m1 = parseModule(text);
