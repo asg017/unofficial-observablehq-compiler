@@ -31,7 +31,8 @@
   ],
   "dependencies": {
     "@observablehq/parser": "^1.2.1",
-    "@observablehq/runtime": "^4.4.4"
+    "@observablehq/runtime": "^4.4.4",
+    "acorn-walk": "^7.0.0"
   },
   "devDependencies": {
     "http-server": "^0.11.1",

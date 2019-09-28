@@ -40,10 +40,29 @@
       }
     }
 
+    viewof x = html\`<input type="range">\`
+
+    y = x * x
+
+    z = viewof x.valueAsNumber + x
+
+    mutable m = 0
+
+    {
+      const button = html\`<button>increment m, decrement x\`;
+      button.onclick = () => {
+        mutable m++;
+        viewof x.value = viewof x.valueAsNumber - 1;
+        viewof x.dispatchEvent(new CustomEvent('input'));
+      };
+      return button;
+    }
+
+    3*m
+
     d3 = require('d3-array')
 
     html\`<img src="https://images.dog.ceo/breeds/dhole/n02115913_4117.jpg" width="100">\`
-
 
     import {ramp} from "@mbostock/color-ramp"
 
@@ -76,6 +95,6 @@
 `);
 
     const rt = new Runtime();
-    rt.module(define, Inspector.into(document.querySelector("#main")));
+    window.MODULE = rt.module(define, Inspector.into(document.querySelector("#main")));
   </script>
 </body>
