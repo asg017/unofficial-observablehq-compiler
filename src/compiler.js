@@ -128,7 +128,7 @@ const createModuleDefintion = (m, resolveModule) => {
           null,
           ["md"],
           md => md`~~~javascript
-    import {${specifiers.map(
+import {${specifiers.map(
       specifier => `${specifier.name} as ${specifier.alias}`
     ).join(', ')}}  ${
             hasInjections
@@ -137,7 +137,7 @@ const createModuleDefintion = (m, resolveModule) => {
                   .join(", ")}} `
               : ``
           }from "${cell.body.source.value}"
-        ~~~`
+~~~`
         );
         const { from } = await createImportCellDefintion(
           cell,
