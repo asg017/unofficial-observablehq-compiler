@@ -334,9 +334,9 @@ magic-string@^0.25.2:
   dependencies:
     sourcemap-codec "^1.4.4"
 
-"marked@https://github.com/observablehq/marked.git#94c6b946f462fd25db4465d71a6859183f86c57f":
+"marked@git+https://github.com/observablehq/marked.git#94c6b946f462fd25db4465d71a6859183f86c57f":
   version "0.3.12"
-  resolved "https://github.com/observablehq/marked.git#94c6b946f462fd25db4465d71a6859183f86c57f"
+  resolved "git+https://github.com/observablehq/marked.git#94c6b946f462fd25db4465d71a6859183f86c57f"
 
 mime@^1.6.0:
   version "1.6.0"

@@ -1,10 +1,6 @@
 import { parseCell, parseModule, walk } from "@observablehq/parser";
-import { Library } from "@observablehq/runtime";
 import { extractPath } from "./utils";
 import { simple } from 'acorn-walk';
-
-const { Generators, Mutable: constantMutable } = new Library();
-const Mutable = constantMutable();
 
 const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
 const GeneratorFunction = Object.getPrototypeOf(function*() {}).constructor;
@@ -172,14 +168,14 @@ const createModuleDefintion = (m, resolveModule) => {
           main
             .variable(observer(reference))
             .define(reference, cellReferences, cellFunction);
-          main.variable(observer(cellName)).define(cellName, [reference], Generators.input);
+          main.variable(observer(cellName)).define(cellName, ["Generators", reference], (G, _) => G.input(_));
         } else if (cell.id && cell.id.type === "MutableExpression") {
           const initialName = `initial ${cellName}`;
           const mutableName = `mutable ${cellName}`;
           main
             .variable(null)
             .define(initialName, cellReferences, cellFunction);
-          main.variable(observer(mutableName)).define(mutableName, [initialName], (_) => new Mutable(_));
+          main.variable(observer(mutableName)).define(mutableName, ["Mutable", initialName], (M, _) => new M(_));
           main.variable(observer(cellName)).define(cellName, [mutableName], _ => _.generator);
         } else {
           main
