@@ -76,114 +76,115 @@ const createRegularCellDefintion = cell => {
     cellReferences
   };
 };
+const cellPromise = async (cell, main, observer, resolveModule) => {
+  if (cell.body.type === "ImportDeclaration") {
+    const specifiers = [];
+    if (cell.body.specifiers) for (const specifier of cell.body.specifiers) {
+      if (specifier.view) {
+        specifiers.push({
+          name: 'viewof ' + specifier.imported.name,
+          alias: 'viewof ' + specifier.local.name
+        });
+      } else if (specifier.mutable) {
+        specifiers.push({
+          name: 'mutable ' + specifier.imported.name,
+          alias: 'mutable ' + specifier.local.name
+        });
+      }
+      specifiers.push({
+        name: specifier.imported.name,
+        alias: specifier.local.name
+      });
+    }
+    // If injections is undefined, do not derive!
+    const hasInjections = cell.body.injections !== undefined;
+    const injections = [];
+    if (hasInjections) for (const injection of cell.body.injections) {
+      // This currently behaves like notebooks on observablehq.com
+      // Commenting out the if & else if blocks result in behavior like Example 3 here: https://observablehq.com/d/7ccad009e4d89969
+      if (injection.view) {
+        injections.push({
+          name: 'viewof ' + injection.imported.name,
+          alias: 'viewof ' + injection.local.name
+        });
+      } else if (injection.mutable) {
+        injections.push({
+          name: 'mutable ' + injection.imported.name,
+          alias: 'mutable ' + injection.local.name
+        });
+      }
+      injections.push({
+        name: injection.imported.name,
+        alias: injection.local.name
+      });
+    }
+    // this will display extra names for viewof / mutable imports (for now?)
+    main.variable(observer()).define(
+      null,
+      ["md"],
+      md => md`~~~javascript
+import {${specifiers.map(
+  specifier => `${specifier.name} as ${specifier.alias}`
+).join(', ')}}  ${
+        hasInjections
+          ? `with {${injections
+              .map(injection => `${injection.name} as ${injection.alias}`)
+              .join(", ")}} `
+          : ``
+      }from "${cell.body.source.value}"
+~~~`
+    );
+    const { from } = await createImportCellDefintion(
+      cell,
+      resolveModule
+    ).catch(err => {
+      throw Error("Error defining import cell", err);
+    });
+
+    const other = main._runtime.module(from);
+    if (hasInjections) {
+      const child = other.derive(injections, main);
+      specifiers.map(specifier => {
+        main.import(specifier.name, specifier.alias, child);
+      });
+    } else {
+      specifiers.map(specifier => {
+        main.import(specifier.name, specifier.alias, other);
+      });
+    }
+  } else {
+    const {
+      cellName,
+      cellFunction,
+      cellReferences
+    } = createRegularCellDefintion(cell);
+    if (cell.id && cell.id.type === "ViewExpression") {
+      const reference = `viewof ${cellName}`;
+      main
+        .variable(observer(reference))
+        .define(reference, cellReferences, cellFunction);
+      main.variable(observer(cellName)).define(cellName, ["Generators", reference], (G, _) => G.input(_));
+    } else if (cell.id && cell.id.type === "MutableExpression") {
+      const initialName = `initial ${cellName}`;
+      const mutableName = `mutable ${cellName}`;
+      main
+        .variable(null)
+        .define(initialName, cellReferences, cellFunction);
+      main.variable(observer(mutableName)).define(mutableName, ["Mutable", initialName], (M, _) => new M(_));
+      main.variable(observer(cellName)).define(cellName, [mutableName], _ => _.generator);
+    } else {
+      main
+        .variable(observer(cellName))
+        .define(cellName, cellReferences, cellFunction);
+    }
+  }
+};
 const createModuleDefintion = (m, resolveModule) => {
   return async function define(runtime, observer) {
     const { cells } = m;
     const main = runtime.module();
 
-    const cellsPromise = cells.map(async cell => {
-      if (cell.body.type === "ImportDeclaration") {
-        const specifiers = [];
-        if (cell.body.specifiers) for (const specifier of cell.body.specifiers) {
-          if (specifier.view) {
-            specifiers.push({
-              name: 'viewof ' + specifier.imported.name,
-              alias: 'viewof ' + specifier.local.name
-            });
-          } else if (specifier.mutable) {
-            specifiers.push({
-              name: 'mutable ' + specifier.imported.name,
-              alias: 'mutable ' + specifier.local.name
-            });
-          }
-          specifiers.push({
-            name: specifier.imported.name,
-            alias: specifier.local.name
-          });
-        }
-        // If injections is undefined, do not derive!
-        const hasInjections = cell.body.injections !== undefined;
-        const injections = [];
-        if (hasInjections) for (const injection of cell.body.injections) {
-          // This currently behaves like notebooks on observablehq.com
-          // Commenting out the if & else if blocks result in behavior like Example 3 here: https://observablehq.com/d/7ccad009e4d89969
-          if (injection.view) {
-            injections.push({
-              name: 'viewof ' + injection.imported.name,
-              alias: 'viewof ' + injection.local.name
-            });
-          } else if (injection.mutable) {
-            injections.push({
-              name: 'mutable ' + injection.imported.name,
-              alias: 'mutable ' + injection.local.name
-            });
-          }
-          injections.push({
-            name: injection.imported.name,
-            alias: injection.local.name
-          });
-        }
-        // this will display extra names for viewof / mutable imports (for now?)
-        main.variable(observer()).define(
-          null,
-          ["md"],
-          md => md`~~~javascript
-import {${specifiers.map(
-      specifier => `${specifier.name} as ${specifier.alias}`
-    ).join(', ')}}  ${
-            hasInjections
-              ? `with {${injections
-                  .map(injection => `${injection.name} as ${injection.alias}`)
-                  .join(", ")}} `
-              : ``
-          }from "${cell.body.source.value}"
-~~~`
-        );
-        const { from } = await createImportCellDefintion(
-          cell,
-          resolveModule
-        ).catch(err => {
-          throw Error("Error defining import cell", err);
-        });
-
-        const other = runtime.module(from);
-        if (hasInjections) {
-          const child = other.derive(injections, main);
-          specifiers.map(specifier => {
-            main.import(specifier.name, specifier.alias, child);
-          });
-        } else {
-          specifiers.map(specifier => {
-            main.import(specifier.name, specifier.alias, other);
-          });
-        }
-      } else {
-        const {
-          cellName,
-          cellFunction,
-          cellReferences
-        } = createRegularCellDefintion(cell);
-        if (cell.id && cell.id.type === "ViewExpression") {
-          const reference = `viewof ${cellName}`;
-          main
-            .variable(observer(reference))
-            .define(reference, cellReferences, cellFunction);
-          main.variable(observer(cellName)).define(cellName, ["Generators", reference], (G, _) => G.input(_));
-        } else if (cell.id && cell.id.type === "MutableExpression") {
-          const initialName = `initial ${cellName}`;
-          const mutableName = `mutable ${cellName}`;
-          main
-            .variable(null)
-            .define(initialName, cellReferences, cellFunction);
-          main.variable(observer(mutableName)).define(mutableName, ["Mutable", initialName], (M, _) => new M(_));
-          main.variable(observer(cellName)).define(cellName, [mutableName], _ => _.generator);
-        } else {
-          main
-            .variable(observer(cellName))
-            .define(cellName, cellReferences, cellFunction);
-        }
-      }
-    });
+    const cellsPromise = cells.map(async cell => cellPromise(cell, main, observer, resolveModule));
 
     await Promise.all(cellsPromise);
   };
@@ -206,5 +207,20 @@ export class Compiler {
   module(text) {
     const m1 = parseModule(text);
     return createModuleDefintion(m1, this.resolve);
+  }
+  notebook(obj) {
+    const cells = obj.nodes.map(({value}) => {
+      const cell = parseCell(value);
+      cell.input = value;
+      return cell;
+    });
+    const resolve = this.resolve;
+    return async function define(runtime, observer) {
+      const main = runtime.module();
+
+      const cellsPromise = cells.map(async cell => cellPromise(cell, main, observer, resolve));
+
+      await Promise.all(cellsPromise);
+    };
   }
 }
