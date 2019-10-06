@@ -82,6 +82,42 @@ const runtime = new Runtime();
 const main = runtime.module(define, Inspector.into(document.body));
 ```
 
+<a href="#compile_notebook" name="compile_notebook">#</a>compile.<b>notebook</b>(<i>object</i>)
+
+Returns a define function. `object` is a "notebook JSON object" as used by the
+ObservableHQ notebook app to display notebooks. Such JSON files are served by
+the API endpoint at `https://api.observablehq.com/document/:slug` (see the
+[`observable-client`](https://github.com/mootari/observable-client) for a
+convenient way to authenticate and make requests).
+
+`compile.notebook` requires that `object` has a field named `"nodes"`
+consisting of an array of cell objects. Each of the cell objects must have a
+field `"value"` consisting of a string with the source code for that cell.
+
+The notebook JSON objects also ordinarily contain some other metadata fields,
+e.g. `"id"`, `"slug"`, `"owner"`, etc. which are currently ignored by the
+compiler. Similarly, the cell objects in `"nodes"` ordinarily contain `"id"` and
+`"pinned"` fields which are also unused here.
+
+For example:
+
+```javascript
+const define = compile.notebook({
+  nodes:[
+    { "value": "a = 1" },
+    { "value": "b = 2" },
+    { "value": "c = a + b" }
+  ]
+});
+```
+
+You can now use `define` with the Observable [runtime](https://github.com/observablehq/runtime):
+
+```javascript
+const runtime = new Runtime();
+const main = runtime.module(define, Inspector.into(document.body));
+```
+
 <a href="#compile_cell" name="compile_cell">#</a>compile.<b>cell</b>(<i>contents</i>)
 
 **WARNING** this isn't implemented yet! I'm not 100% sure how to structure it :/
