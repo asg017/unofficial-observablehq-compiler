@@ -35,7 +35,7 @@ and this [test page](https://github.com/asg017/unofficial-observablehq-compiler/
 
 ### Compiler
 
-<a href="#Compiler" name="Compiler">#</a> new <b>Compiler</b>(<i>resolve</i> = defaultResolver) [<>](https://github.com/asg017/unofficial-observablehq-compiler/blob/master/src/compiler.js#L119 "Source")
+<a href="#Compiler" name="Compiler">#</a> new <b>Compiler</b>(<i>resolve</i> = defaultResolver, <i>fileAttachmentsResolve</i> = name => name) [<>](https://github.com/asg017/unofficial-observablehq-compiler/blob/master/src/compiler.js#L119 "Source")
 
 Returns a new compiler. `resolve` is an optional function that, given a `path`
 string, will resolve a new define function for a new module. This is used when
@@ -60,6 +60,19 @@ const resolve = path =>
 
 const compile = new Compiler(resolve);
 ```
+
+`fileAttachmentsResolve` is an optional function from strings to URLs which is used as a <i>resolve</i> function in the standard library's <a href="https://github.com/observablehq/stdlib#FileAttachments">FileAttachments</a> function. For example, if you wanted to reference `example.com/my_file.png` in a cell which reads:
+```javascript
+await FileAttachment("my_file.png").url()
+```
+Then you could compile this cell with:
+```javascript
+const fileAttachmentsResolve = name => `example.com/${name}`;
+
+const compile = new Compiler(, fileAttachmentsResolve);
+```
+
+By default, `fileAtachmentsResolve` simply returns the same string, so you would have to use valid absolute or relative URLs in your `FileAttachment`s.
 
 <a href="#compile_module" name="compile_module">#</a>compile.<b>module</b>(<i>contents</i>)
 

@@ -126,6 +126,9 @@
     myB === a3
 
     b3
+
+    attached = (await import(await FileAttachment("./test/exec_test.js").url())).html
+
 `);
 
     const rt = new Runtime();
