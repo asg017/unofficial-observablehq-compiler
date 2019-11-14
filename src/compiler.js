@@ -179,11 +179,11 @@ import {${specifiers.map(
     }
   }
 };
-const createModuleDefintion = (m, resolveModule, fileAttachmentsResolve) => {
+const createModuleDefintion = (m, resolveModule, resolveFileAttachments) => {
   return async function define(runtime, observer) {
     const { cells } = m;
     const main = runtime.module();
-    main.builtin("FileAttachment", runtime.fileAttachments(fileAttachmentsResolve));
+    main.builtin("FileAttachment", runtime.fileAttachments(resolveFileAttachments));
     const cellsPromise = cells.map(async cell => cellPromise(cell, main, observer, resolveModule));
 
     await Promise.all(cellsPromise);
@@ -198,16 +198,16 @@ const defaultResolver = async path => {
 };
 
 export class Compiler {
-  constructor(resolve = defaultResolver, fileAttachmentsResolve = name => name) {
+  constructor(resolve = defaultResolver, resolveFileAttachments = name => name) {
     this.resolve = resolve;
-    this.fileAttachmentsResolve = fileAttachmentsResolve;
+    this.resolveFileAttachments = resolveFileAttachments;
   }
   cell(text) {
     throw Error(`compile.cell not implemented yet`);
   }
   module(text) {
     const m1 = parseModule(text);
-    return createModuleDefintion(m1, this.resolve, this.fileAttachmentsResolve);
+    return createModuleDefintion(m1, this.resolve, this.resolveFileAttachments);
   }
   notebook(obj) {
     const cells = obj.nodes.map(({value}) => {
@@ -219,7 +219,7 @@ export class Compiler {
 
     return async function define(runtime, observer) {
       const main = runtime.module();
-      main.builtin("FileAttachment", runtime.fileAttachments(this.fileAttachmentsResolve));
+      main.builtin("FileAttachment", runtime.fileAttachments(this.resolveFileAttachments));
       const cellsPromise = cells.map(async cell => cellPromise(cell, main, observer, resolve));
 
       await Promise.all(cellsPromise);
