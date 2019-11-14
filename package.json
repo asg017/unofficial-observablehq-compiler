@@ -18,7 +18,7 @@
   "scripts": {
     "test": "tape 'test/**/*-test.js'",
     "test-html": "http-server",
-    "prepublishOnly": "rm -f index.js && rollup -c",
+    "prepublishOnly": "rollup -c",
     "postpublish": "git push && git push --tags"
   },
   "keywords": [
