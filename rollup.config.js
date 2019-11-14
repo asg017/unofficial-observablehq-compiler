@@ -6,13 +6,13 @@ export default {
   output: [
     {
       compact: true,
-      file: "index.js",
+      file: "dist/index.js",
       format: "umd",
       name: "index.js"
     },
     {
       compact: true,
-      file: "index-esm.js",
+      file: "dist/index-esm.js",
       format: "esm",
       name: "esm"
     }

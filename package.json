@@ -2,7 +2,7 @@
   "name": "@alex.garcia/unofficial-observablehq-compiler",
   "version": "0.3.0",
   "description": "An unofficial compiler to bind @observablehq/parser and @observablehq/runtime",
-  "main": "index.js",
+  "main": "dist/index.js",
   "author": "Alex Garcia <alexsebastian.garcia@gmail.com>",
   "repository": {
     "type": "git",
@@ -13,7 +13,7 @@
     "access": "public"
   },
   "files": [
-    "index.js"
+    "dist/**/*.js"
   ],
   "scripts": {
     "test": "tape 'test/**/*-test.js'",
