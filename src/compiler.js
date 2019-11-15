@@ -216,10 +216,11 @@ export class Compiler {
       return cell;
     });
     const resolve = this.resolve;
+    const resolveFileAttachments = this.resolveFileAttachments;
 
     return async function define(runtime, observer) {
       const main = runtime.module();
-      main.builtin("FileAttachment", runtime.fileAttachments(this.resolveFileAttachments));
+      main.builtin("FileAttachment", runtime.fileAttachments(resolveFileAttachments));
       const cellsPromise = cells.map(async cell => cellPromise(cell, main, observer, resolve));
 
       await Promise.all(cellsPromise);

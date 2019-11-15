@@ -15,7 +15,7 @@
       Runtime,
       Inspector
     } from "https://cdn.jsdelivr.net/npm/@observablehq/runtime@4/dist/runtime.js";
-    import { Compiler } from "/index-esm.js";
+    import { Compiler } from "/dist/index-esm.js";
 
     const compile = new Compiler();
     const define = compile.module(`
@@ -127,7 +127,7 @@
 
     b3
 
-    attached = (await import(await FileAttachment("./test/executable_attachment.js").url())).html
+    attached = (await import(await FileAttachment("/test/executable_attachment.js").url())).html
 
 `);
 
