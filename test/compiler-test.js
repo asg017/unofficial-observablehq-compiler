@@ -5,7 +5,7 @@ const compiler = require("../dist/index");
 test("compiler", async t => {
   const rt = new runtime.Runtime();
   const compile = new compiler.Compiler();
-  const define = compile.module(`
+  const define = await compile.module(`
 a = 1
 
 b = 2
