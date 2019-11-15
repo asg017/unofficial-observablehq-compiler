@@ -21,4 +21,4 @@ jobs:
       with:
           github-token: ${{github.token}}
           script: |
-            await github.issues.createComment({...context.issue, body: 'New demo site for this PR deployed to [unofficial-observablehq-compiler-demo-${{ github.event.number }}.surge.sh](unofficial-observablehq-compiler-demo-${{ github.event.number }}.surge.sh) !'})
+            await github.issues.createComment({...context.issue, body: 'New demo site for this PR deployed to [unofficial-observablehq-compiler-demo-${{ github.event.number }}.surge.sh](https://unofficial-observablehq-compiler-demo-${{ github.event.number }}.surge.sh) !'})
