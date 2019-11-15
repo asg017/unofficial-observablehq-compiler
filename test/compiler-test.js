@@ -1,6 +1,6 @@
 const test = require("tape");
 const runtime = require("@observablehq/runtime");
-const compiler = require("../index");
+const compiler = require("../dist/index");
 
 test("compiler", async t => {
   const rt = new runtime.Runtime();
