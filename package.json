@@ -16,9 +16,10 @@
     "dist/**/*.js"
   ],
   "scripts": {
-    "test": "tape 'test/**/*-test.js'",
+    "build": "rollup -c",
+    "test": "npm run build && tape 'test/**/*-test.js'",
     "test-html": "http-server",
-    "prepublishOnly": "rollup -c",
+    "prepublishOnly": "npm run build",
     "postpublish": "git push && git push --tags"
   },
   "keywords": [
