@@ -85,7 +85,13 @@ const createRegularCellDefintion = cell => {
     cellReferences
   };
 };
-const createCellDefinition = (cell, main, observer, dependencyMap) => {
+const createCellDefinition = (
+  cell,
+  main,
+  observer,
+  dependencyMap,
+  define = true
+) => {
   if (cell.body.type === "ImportDeclaration") {
     const specifiers = [];
     if (cell.body.specifiers)
@@ -168,26 +174,45 @@ import {${specifiers
     } = createRegularCellDefintion(cell);
     if (cell.id && cell.id.type === "ViewExpression") {
       const reference = `viewof ${cellName}`;
-      main
-        .variable(observer(reference))
-        .define(reference, cellReferences, cellFunction);
-      main
-        .variable(observer(cellName))
-        .define(cellName, ["Generators", reference], (G, _) => G.input(_));
+      if (define) {
+        main
+          .variable(observer(reference))
+          .define(reference, cellReferences, cellFunction);
+        main
+          .variable(observer(cellName))
+          .define(cellName, ["Generators", reference], (G, _) => G.input(_));
+      } else {
+        main.redefine(reference, cellReferences, cellFunction);
+        main.redefine(cellName, ["Generators", reference], (G, _) =>
+          G.input(_)
+        );
+      }
     } else if (cell.id && cell.id.type === "MutableExpression") {
       const initialName = `initial ${cellName}`;
       const mutableName = `mutable ${cellName}`;
-      main.variable(null).define(initialName, cellReferences, cellFunction);
-      main
-        .variable(observer(mutableName))
-        .define(mutableName, ["Mutable", initialName], (M, _) => new M(_));
-      main
-        .variable(observer(cellName))
-        .define(cellName, [mutableName], _ => _.generator);
+      if (define) {
+        main.variable(null).define(initialName, cellReferences, cellFunction);
+        main
+          .variable(observer(mutableName))
+          .define(mutableName, ["Mutable", initialName], (M, _) => new M(_));
+        main
+          .variable(observer(cellName))
+          .define(cellName, [mutableName], _ => _.generator);
+      } else {
+        main.redefine(initialName, cellReferences, cellFunction);
+        main.redefine(
+          mutableName,
+          ["Mutable", initialName],
+          (M, _) => new M(_)
+        );
+        main.redefine(cellName, [mutableName], _ => _.generator);
+      }
     } else {
-      main
-        .variable(observer(cellName))
-        .define(cellName, cellReferences, cellFunction);
+      if (define)
+        main
+          .variable(observer(cellName))
+          .define(cellName, cellReferences, cellFunction);
+      else main.redefine(cellName, cellReferences, cellFunction);
     }
   }
 };
@@ -236,9 +261,24 @@ export class Compiler {
     this.resolve = resolve;
     this.resolveFileAttachments = resolveFileAttachments;
   }
-  cell(text) {
-    throw Error(`compile.cell not implemented yet`);
+  async cell(text) {
+    const cell = parseCell(text);
+    cell.input = text;
+    const dependencyMap = new Map();
+    if (cell.body.type === "ImportDeclaration") {
+      const fromModule = await this.resolve(cell.body.source.value);
+      dependencyMap.set(cell.body.source.value, fromModule);
+    }
+    return {
+      define(module, observer) {
+        createCellDefinition(cell, module, observer, dependencyMap, true);
+      },
+      redefine(module, observer) {
+        createCellDefinition(cell, module, observer, dependencyMap, false);
+      }
+    };
   }
+
   async module(text) {
     const m1 = parseModule(text);
     return await createModuleDefintion(
