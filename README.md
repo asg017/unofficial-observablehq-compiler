@@ -62,10 +62,13 @@ const compile = new Compiler(resolve);
 ```
 
 `fileAttachmentsResolve` is an optional function from strings to URLs which is used as a <i>resolve</i> function in the standard library's <a href="https://github.com/observablehq/stdlib#FileAttachments">FileAttachments</a> function. For example, if you wanted to reference `example.com/my_file.png` in a cell which reads:
+
 ```javascript
-await FileAttachment("my_file.png").url()
+await FileAttachment("my_file.png").url();
 ```
+
 Then you could compile this cell with:
+
 ```javascript
 const fileAttachmentsResolve = name => `example.com/${name}`;
 
@@ -116,11 +119,7 @@ For example:
 
 ```javascript
 const define = compile.notebook({
-  nodes:[
-    { "value": "a = 1" },
-    { "value": "b = 2" },
-    { "value": "c = a + b" }
-  ]
+  nodes: [{ value: "a = 1" }, { value: "b = 2" }, { value: "c = a + b" }]
 });
 ```
 
@@ -133,7 +132,59 @@ const main = runtime.module(define, Inspector.into(document.body));
 
 <a href="#compile_cell" name="compile_cell">#</a>compile.<b>cell</b>(<i>contents</i>)
 
-**WARNING** this isn't implemented yet! I'm not 100% sure how to structure it :/
+Returns an object that has `define` and `redefine` functions that would define or redefine variables in the given cell to a specified module. `text` is input for the [`parseCell`](https://github.com/observablehq/parser#parseCell) function. If the cell is not an ImportDeclaration, then the `redefine` functions can be used to redefine previously existing variables in a module.
+
+```javascript
+let define, redefine;
+
+define = await compile.module(`a = 1;
+b = 2;
+
+c = a + b`);
+
+const runtime = new Runtime();
+const main = runtime.module(define, Inspector.into(document.body));
+
+await main.value("a") // 1
+
+{define, redefine} = compile.cell(`a = 20`);
+
+redefine(main);
+
+await main.value("a"); // 20
+await main.value("c"); // 22
+
+define(main); // would throw an error, since a is already defined in main
+
+{define} = compile.cell(`x = 2`);
+define(main);
+{define} = compile.cell(`y = x * 4`);
+define(main);
+
+await main.value("y") // 8
+
+```
+
+Keep in mind, if you want to use `define` from `compile.cell`, you'll have to provide an `observer` function, which will most likely be the same observer that was used when defining the module. For example:
+
+```javascript
+
+let define, redefine;
+
+define = await compile.module(`a = 1;
+b = 2;`);
+
+const runtime = new Runtime();
+const observer = Inspector.into(document.body);
+const main = runtime.module(define, observer);
+
+{define} = compile.cell(`c = a + b`);
+
+define(main, observer);
+
+```
+
+Since `redefine` is done on a module level, an observer is not required.
 
 ## License
 
