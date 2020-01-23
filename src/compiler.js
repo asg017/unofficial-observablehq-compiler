@@ -208,14 +208,14 @@ const createModuleDefintion = async (
   });
   await Promise.all(importCellsPromise);
 
-  return async function define(runtime, observer) {
+  return function define(runtime, observer) {
     const { cells } = moduleObject;
     const main = runtime.module();
     main.builtin(
       "FileAttachment",
       runtime.fileAttachments(resolveFileAttachments)
     );
-    cells.map(async cell =>
+    cells.map(cell =>
       createCellDefinition(cell, main, observer, dependencyMap)
     );
   };
