@@ -1,17 +1,12 @@
 import { parseCell, parseModule, walk } from "@observablehq/parser";
 import { extractPath } from "./utils";
-import { simple } from 'acorn-walk';
+import { simple } from "acorn-walk";
 
 const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
 const GeneratorFunction = Object.getPrototypeOf(function*() {}).constructor;
 const AsyncGeneratorFunction = Object.getPrototypeOf(async function*() {})
   .constructor;
 
-const createImportCellDefintion = async (cell, resolveModule) => {
-  const source = cell.body.source.value;
-  const from = await resolveModule(source);
-  return { from };
-};
 const createRegularCellDefintion = cell => {
   let name = null;
   if (cell.id && cell.id.name) name = cell.id.name;
@@ -19,40 +14,54 @@ const createRegularCellDefintion = cell => {
   let bodyText = cell.input.substring(cell.body.start, cell.body.end);
   const cellReferences = (cell.references || []).map(ref => {
     if (ref.type === "ViewExpression") {
-      return 'viewof ' + ref.id.name;
+      return "viewof " + ref.id.name;
     } else if (ref.type === "MutableExpression") {
-      return 'mutable ' + ref.id.name;
+      return "mutable " + ref.id.name;
     } else return ref.name;
   });
   let $count = 0;
   let indexShift = 0;
   const references = (cell.references || []).map(ref => {
     if (ref.type === "ViewExpression") {
-      const $string = '$' + $count;
+      const $string = "$" + $count;
       $count++;
       // replace "viewof X" in bodyText with "$($count)"
-      simple(cell.body, {
-        ViewExpression(node) {
-          const start = node.start - cell.body.start;
-          const end = node.end - cell.body.start;
-          bodyText = bodyText.slice(0, start + indexShift) + $string + bodyText.slice(end + indexShift);
-          indexShift += $string.length - (end - start);
-        }
-      }, walk);
+      simple(
+        cell.body,
+        {
+          ViewExpression(node) {
+            const start = node.start - cell.body.start;
+            const end = node.end - cell.body.start;
+            bodyText =
+              bodyText.slice(0, start + indexShift) +
+              $string +
+              bodyText.slice(end + indexShift);
+            indexShift += $string.length - (end - start);
+          }
+        },
+        walk
+      );
       return $string;
     } else if (ref.type === "MutableExpression") {
-      const $string = '$' + $count;
-      const $stringValue = $string + '.value';
+      const $string = "$" + $count;
+      const $stringValue = $string + ".value";
       $count++;
       // replace "mutable Y" in bodyText with "$($count).value"
-      simple(cell.body, {
-        MutableExpression(node) {
-          const start = node.start - cell.body.start;
-          const end = node.end - cell.body.start;
-          bodyText = bodyText.slice(0, start + indexShift) + $stringValue + bodyText.slice(end + indexShift);
-          indexShift += $stringValue.length - (end - start);
-        }
-      }, walk);
+      simple(
+        cell.body,
+        {
+          MutableExpression(node) {
+            const start = node.start - cell.body.start;
+            const end = node.end - cell.body.start;
+            bodyText =
+              bodyText.slice(0, start + indexShift) +
+              $stringValue +
+              bodyText.slice(end + indexShift);
+            indexShift += $stringValue.length - (end - start);
+          }
+        },
+        walk
+      );
       return $string;
     } else return ref.name;
   });
@@ -76,56 +85,58 @@ const createRegularCellDefintion = cell => {
     cellReferences
   };
 };
-const cellPromise = async (cell, main, observer, resolveModule) => {
+const createCellDefinition = (cell, main, observer, dependencyMap) => {
   if (cell.body.type === "ImportDeclaration") {
     const specifiers = [];
-    if (cell.body.specifiers) for (const specifier of cell.body.specifiers) {
-      if (specifier.view) {
+    if (cell.body.specifiers)
+      for (const specifier of cell.body.specifiers) {
+        if (specifier.view) {
+          specifiers.push({
+            name: "viewof " + specifier.imported.name,
+            alias: "viewof " + specifier.local.name
+          });
+        } else if (specifier.mutable) {
+          specifiers.push({
+            name: "mutable " + specifier.imported.name,
+            alias: "mutable " + specifier.local.name
+          });
+        }
         specifiers.push({
-          name: 'viewof ' + specifier.imported.name,
-          alias: 'viewof ' + specifier.local.name
-        });
-      } else if (specifier.mutable) {
-        specifiers.push({
-          name: 'mutable ' + specifier.imported.name,
-          alias: 'mutable ' + specifier.local.name
+          name: specifier.imported.name,
+          alias: specifier.local.name
         });
       }
-      specifiers.push({
-        name: specifier.imported.name,
-        alias: specifier.local.name
-      });
-    }
     // If injections is undefined, do not derive!
     const hasInjections = cell.body.injections !== undefined;
     const injections = [];
-    if (hasInjections) for (const injection of cell.body.injections) {
-      // This currently behaves like notebooks on observablehq.com
-      // Commenting out the if & else if blocks result in behavior like Example 3 here: https://observablehq.com/d/7ccad009e4d89969
-      if (injection.view) {
+    if (hasInjections)
+      for (const injection of cell.body.injections) {
+        // This currently behaves like notebooks on observablehq.com
+        // Commenting out the if & else if blocks result in behavior like Example 3 here: https://observablehq.com/d/7ccad009e4d89969
+        if (injection.view) {
+          injections.push({
+            name: "viewof " + injection.imported.name,
+            alias: "viewof " + injection.local.name
+          });
+        } else if (injection.mutable) {
+          injections.push({
+            name: "mutable " + injection.imported.name,
+            alias: "mutable " + injection.local.name
+          });
+        }
         injections.push({
-          name: 'viewof ' + injection.imported.name,
-          alias: 'viewof ' + injection.local.name
-        });
-      } else if (injection.mutable) {
-        injections.push({
-          name: 'mutable ' + injection.imported.name,
-          alias: 'mutable ' + injection.local.name
+          name: injection.imported.name,
+          alias: injection.local.name
         });
       }
-      injections.push({
-        name: injection.imported.name,
-        alias: injection.local.name
-      });
-    }
     // this will display extra names for viewof / mutable imports (for now?)
     main.variable(observer()).define(
       null,
       ["md"],
       md => md`~~~javascript
-import {${specifiers.map(
-  specifier => `${specifier.name} as ${specifier.alias}`
-).join(', ')}}  ${
+import {${specifiers
+        .map(specifier => `${specifier.name} as ${specifier.alias}`)
+        .join(", ")}}  ${
         hasInjections
           ? `with {${injections
               .map(injection => `${injection.name} as ${injection.alias}`)
@@ -134,14 +145,11 @@ import {${specifiers.map(
       }from "${cell.body.source.value}"
 ~~~`
     );
-    const { from } = await createImportCellDefintion(
-      cell,
-      resolveModule
-    ).catch(err => {
-      throw Error("Error defining import cell", err);
-    });
 
-    const other = main._runtime.module(from);
+    const other = main._runtime.module(
+      dependencyMap.get(cell.body.source.value)
+    );
+
     if (hasInjections) {
       const child = other.derive(injections, main);
       specifiers.map(specifier => {
@@ -163,15 +171,19 @@ import {${specifiers.map(
       main
         .variable(observer(reference))
         .define(reference, cellReferences, cellFunction);
-      main.variable(observer(cellName)).define(cellName, ["Generators", reference], (G, _) => G.input(_));
+      main
+        .variable(observer(cellName))
+        .define(cellName, ["Generators", reference], (G, _) => G.input(_));
     } else if (cell.id && cell.id.type === "MutableExpression") {
       const initialName = `initial ${cellName}`;
       const mutableName = `mutable ${cellName}`;
+      main.variable(null).define(initialName, cellReferences, cellFunction);
       main
-        .variable(null)
-        .define(initialName, cellReferences, cellFunction);
-      main.variable(observer(mutableName)).define(mutableName, ["Mutable", initialName], (M, _) => new M(_));
-      main.variable(observer(cellName)).define(cellName, [mutableName], _ => _.generator);
+        .variable(observer(mutableName))
+        .define(mutableName, ["Mutable", initialName], (M, _) => new M(_));
+      main
+        .variable(observer(cellName))
+        .define(cellName, [mutableName], _ => _.generator);
     } else {
       main
         .variable(observer(cellName))
@@ -179,14 +191,33 @@ import {${specifiers.map(
     }
   }
 };
-const createModuleDefintion = (m, resolveModule, resolveFileAttachments) => {
-  return async function define(runtime, observer) {
-    const { cells } = m;
-    const main = runtime.module();
-    main.builtin("FileAttachment", runtime.fileAttachments(resolveFileAttachments));
-    const cellsPromise = cells.map(async cell => cellPromise(cell, main, observer, resolveModule));
+const createModuleDefintion = async (
+  moduleObject,
+  resolveModule,
+  resolveFileAttachments
+) => {
+  const dependencyMap = new Map();
 
-    await Promise.all(cellsPromise);
+  const importCells = moduleObject.cells.filter(
+    cell => cell.body.type === "ImportDeclaration"
+  );
+
+  const importCellsPromise = importCells.map(async cell => {
+    const fromModule = await resolveModule(cell.body.source.value);
+    dependencyMap.set(cell.body.source.value, fromModule);
+  });
+  await Promise.all(importCellsPromise);
+
+  return function define(runtime, observer) {
+    const { cells } = moduleObject;
+    const main = runtime.module();
+    main.builtin(
+      "FileAttachment",
+      runtime.fileAttachments(resolveFileAttachments)
+    );
+    cells.map(cell =>
+      createCellDefinition(cell, main, observer, dependencyMap)
+    );
   };
 };
 
@@ -198,32 +229,34 @@ const defaultResolver = async path => {
 };
 
 export class Compiler {
-  constructor(resolve = defaultResolver, resolveFileAttachments = name => name) {
+  constructor(
+    resolve = defaultResolver,
+    resolveFileAttachments = name => name
+  ) {
     this.resolve = resolve;
     this.resolveFileAttachments = resolveFileAttachments;
   }
   cell(text) {
     throw Error(`compile.cell not implemented yet`);
   }
-  module(text) {
+  async module(text) {
     const m1 = parseModule(text);
-    return createModuleDefintion(m1, this.resolve, this.resolveFileAttachments);
+    return await createModuleDefintion(
+      m1,
+      this.resolve,
+      this.resolveFileAttachments
+    );
   }
-  notebook(obj) {
-    const cells = obj.nodes.map(({value}) => {
+  async notebook(obj) {
+    const cells = obj.nodes.map(({ value }) => {
       const cell = parseCell(value);
       cell.input = value;
       return cell;
     });
-    const resolve = this.resolve;
-    const resolveFileAttachments = this.resolveFileAttachments;
-
-    return async function define(runtime, observer) {
-      const main = runtime.module();
-      main.builtin("FileAttachment", runtime.fileAttachments(resolveFileAttachments));
-      const cellsPromise = cells.map(async cell => cellPromise(cell, main, observer, resolve));
-
-      await Promise.all(cellsPromise);
-    };
+    return await createModuleDefintion(
+      { cells },
+      this.resolve,
+      this.resolveFileAttachments
+    );
   }
 }
