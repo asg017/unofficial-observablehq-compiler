@@ -132,7 +132,7 @@ const main = runtime.module(define, Inspector.into(document.body));
 
 <a href="#compile_cell" name="compile_cell">#</a>compile.<b>cell</b>(<i>contents</i>)
 
-Returns an object that has `define` and `redefine` functions that would define or redefine variables in the given cell to a specified module. `text` is input for the [`parseCell`](https://github.com/observablehq/parser#parseCell) function. If the cell is not an ImportDeclaration, then the `redefine` functions can be used to redefine previously existing variables in a module.
+Returns an object that has `define` and `redefine` functions that would define or redefine variables in the given cell to a specified module. `contents` is input for the [`parseCell`](https://github.com/observablehq/parser#parseCell) function. If the cell is not an ImportDeclaration, then the `redefine` functions can be used to redefine previously existing variables in a module.
 
 ```javascript
 let define, redefine;
