@@ -18,7 +18,9 @@
     import { Compiler } from "/dist/index-esm.js";
 
     const compile = new Compiler();
-    const define = compile.module(`
+    compile
+      .module(
+        `
     a = 1
 
     b = 2
@@ -129,9 +131,14 @@
 
     attached = (await import(await FileAttachment("/test/executable_attachment.js").url())).html
 
-`);
-
-    const rt = new Runtime();
-    window.MODULE = rt.module(define, Inspector.into(document.querySelector("#main")));
+`
+      )
+      .then(define => {
+        const rt = new Runtime();
+        window.MODULE = rt.module(
+          define,
+          Inspector.into(document.querySelector("#main"))
+        );
+      });
   </script>
 </body>

@@ -7,11 +7,6 @@ const GeneratorFunction = Object.getPrototypeOf(function*() {}).constructor;
 const AsyncGeneratorFunction = Object.getPrototypeOf(async function*() {})
   .constructor;
 
-const createImportCellDefintion = async (cell, resolveModule) => {
-  const source = cell.body.source.value;
-  const from = await resolveModule(source);
-  return { from };
-};
 const createRegularCellDefintion = cell => {
   let name = null;
   if (cell.id && cell.id.name) name = cell.id.name;
@@ -90,7 +85,7 @@ const createRegularCellDefintion = cell => {
     cellReferences
   };
 };
-const cellPromise = async (cell, main, observer, resolveModule) => {
+const createCellDefinition = (cell, main, observer, dependencyMap) => {
   if (cell.body.type === "ImportDeclaration") {
     const specifiers = [];
     if (cell.body.specifiers)
@@ -150,13 +145,11 @@ import {${specifiers
       }from "${cell.body.source.value}"
 ~~~`
     );
-    const { from } = await createImportCellDefintion(cell, resolveModule).catch(
-      err => {
-        throw Error("Error defining import cell", err);
-      }
+
+    const other = main._runtime.module(
+      dependencyMap.get(cell.body.source.value)
     );
 
-    const other = main._runtime.module(from);
     if (hasInjections) {
       const child = other.derive(injections, main);
       specifiers.map(specifier => {
@@ -198,19 +191,33 @@ import {${specifiers
     }
   }
 };
-const createModuleDefintion = (m, resolveModule, resolveFileAttachments) => {
-  return async function define(runtime, observer) {
-    const { cells } = m;
+const createModuleDefintion = async (
+  moduleObject,
+  resolveModule,
+  resolveFileAttachments
+) => {
+  const dependencyMap = new Map();
+
+  const importCells = moduleObject.cells.filter(
+    cell => cell.body.type === "ImportDeclaration"
+  );
+
+  const importCellsPromise = importCells.map(async cell => {
+    const fromModule = await resolveModule(cell.body.source.value);
+    dependencyMap.set(cell.body.source.value, fromModule);
+  });
+  await Promise.all(importCellsPromise);
+
+  return function define(runtime, observer) {
+    const { cells } = moduleObject;
     const main = runtime.module();
     main.builtin(
       "FileAttachment",
       runtime.fileAttachments(resolveFileAttachments)
     );
-    const cellsPromise = cells.map(async cell =>
-      cellPromise(cell, main, observer, resolveModule)
+    cells.map(cell =>
+      createCellDefinition(cell, main, observer, dependencyMap)
     );
-
-    await Promise.all(cellsPromise);
   };
 };
 
@@ -232,30 +239,24 @@ export class Compiler {
   cell(text) {
     throw Error(`compile.cell not implemented yet`);
   }
-  module(text) {
+  async module(text) {
     const m1 = parseModule(text);
-    return createModuleDefintion(m1, this.resolve, this.resolveFileAttachments);
+    return await createModuleDefintion(
+      m1,
+      this.resolve,
+      this.resolveFileAttachments
+    );
   }
-  notebook(obj) {
+  async notebook(obj) {
     const cells = obj.nodes.map(({ value }) => {
       const cell = parseCell(value);
       cell.input = value;
       return cell;
     });
-    const resolve = this.resolve;
-    const resolveFileAttachments = this.resolveFileAttachments;
-
-    return async function define(runtime, observer) {
-      const main = runtime.module();
-      main.builtin(
-        "FileAttachment",
-        runtime.fileAttachments(resolveFileAttachments)
-      );
-      const cellsPromise = cells.map(async cell =>
-        cellPromise(cell, main, observer, resolve)
-      );
-
-      await Promise.all(cellsPromise);
-    };
+    return await createModuleDefintion(
+      { cells },
+      this.resolve,
+      this.resolveFileAttachments
+    );
   }
 }
