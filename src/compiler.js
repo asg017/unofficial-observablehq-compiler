@@ -1,13 +1,13 @@
 import { parseCell, parseModule, walk } from "@observablehq/parser";
-import { extractPath } from "./utils";
 import { simple } from "acorn-walk";
+import { extractPath } from "./utils";
 
 const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
 const GeneratorFunction = Object.getPrototypeOf(function*() {}).constructor;
 const AsyncGeneratorFunction = Object.getPrototypeOf(async function*() {})
   .constructor;
 
-const createRegularCellDefintion = cell => {
+const setupRegularCell = cell => {
   let name = null;
   if (cell.id && cell.id.name) name = cell.id.name;
   else if (cell.id && cell.id.id && cell.id.id.name) name = cell.id.id.name;
@@ -65,6 +65,14 @@ const createRegularCellDefintion = cell => {
       return $string;
     } else return ref.name;
   });
+  return { cellName: name, references, bodyText, cellReferences };
+};
+
+const createRegularCellDefintion = cell => {
+  const { cellName, references, bodyText, cellReferences } = setupRegularCell(
+    cell
+  );
+
   let code;
   if (cell.body.type !== "BlockStatement") {
     if (cell.async)
@@ -73,18 +81,74 @@ const createRegularCellDefintion = cell => {
   } else code = bodyText;
 
   let f;
-
   if (cell.generator && cell.async)
     f = new AsyncGeneratorFunction(...references, code);
   else if (cell.async) f = new AsyncFunction(...references, code);
   else if (cell.generator) f = new GeneratorFunction(...references, code);
   else f = new Function(...references, code);
   return {
-    cellName: name,
+    cellName,
     cellFunction: f,
     cellReferences
   };
 };
+
+const setupImportCell = cell => {
+  const specifiers = [];
+  if (cell.body.specifiers)
+    for (const specifier of cell.body.specifiers) {
+      if (specifier.view) {
+        specifiers.push({
+          name: "viewof " + specifier.imported.name,
+          alias: "viewof " + specifier.local.name
+        });
+      } else if (specifier.mutable) {
+        specifiers.push({
+          name: "mutable " + specifier.imported.name,
+          alias: "mutable " + specifier.local.name
+        });
+      }
+      specifiers.push({
+        name: specifier.imported.name,
+        alias: specifier.local.name
+      });
+    }
+  // If injections is undefined, do not derive!
+  const hasInjections = cell.body.injections !== undefined;
+  const injections = [];
+  if (hasInjections)
+    for (const injection of cell.body.injections) {
+      // This currently behaves like notebooks on observablehq.com
+      // Commenting out the if & else if blocks result in behavior like Example 3 here: https://observablehq.com/d/7ccad009e4d89969
+      if (injection.view) {
+        injections.push({
+          name: "viewof " + injection.imported.name,
+          alias: "viewof " + injection.local.name
+        });
+      } else if (injection.mutable) {
+        injections.push({
+          name: "mutable " + injection.imported.name,
+          alias: "mutable " + injection.local.name
+        });
+      }
+      injections.push({
+        name: injection.imported.name,
+        alias: injection.local.name
+      });
+    }
+  const importString = `import {${specifiers
+    .map(specifier => `${specifier.name} as ${specifier.alias}`)
+    .join(", ")}} ${
+    hasInjections
+      ? `with {${injections
+          .map(injection => `${injection.name} as ${injection.alias}`)
+          .join(", ")}} `
+      : ``
+  }from "${cell.body.source.value}"`;
+
+  return { specifiers, hasInjections, injections, importString };
+};
+
 const createCellDefinition = (
   cell,
   main,
@@ -93,62 +157,18 @@ const createCellDefinition = (
   define = true
 ) => {
   if (cell.body.type === "ImportDeclaration") {
-    const specifiers = [];
-    if (cell.body.specifiers)
-      for (const specifier of cell.body.specifiers) {
-        if (specifier.view) {
-          specifiers.push({
-            name: "viewof " + specifier.imported.name,
-            alias: "viewof " + specifier.local.name
-          });
-        } else if (specifier.mutable) {
-          specifiers.push({
-            name: "mutable " + specifier.imported.name,
-            alias: "mutable " + specifier.local.name
-          });
-        }
-        specifiers.push({
-          name: specifier.imported.name,
-          alias: specifier.local.name
-        });
-      }
-    // If injections is undefined, do not derive!
-    const hasInjections = cell.body.injections !== undefined;
-    const injections = [];
-    if (hasInjections)
-      for (const injection of cell.body.injections) {
-        // This currently behaves like notebooks on observablehq.com
-        // Commenting out the if & else if blocks result in behavior like Example 3 here: https://observablehq.com/d/7ccad009e4d89969
-        if (injection.view) {
-          injections.push({
-            name: "viewof " + injection.imported.name,
-            alias: "viewof " + injection.local.name
-          });
-        } else if (injection.mutable) {
-          injections.push({
-            name: "mutable " + injection.imported.name,
-            alias: "mutable " + injection.local.name
-          });
-        }
-        injections.push({
-          name: injection.imported.name,
-          alias: injection.local.name
-        });
-      }
+    const {
+      specifiers,
+      hasInjections,
+      injections,
+      importString
+    } = setupImportCell(cell);
     // this will display extra names for viewof / mutable imports (for now?)
     main.variable(observer()).define(
       null,
       ["md"],
       md => md`~~~javascript
-import {${specifiers
-        .map(specifier => `${specifier.name} as ${specifier.alias}`)
-        .join(", ")}}  ${
-        hasInjections
-          ? `with {${injections
-              .map(injection => `${injection.name} as ${injection.alias}`)
-              .join(", ")}} `
-          : ``
-      }from "${cell.body.source.value}"
+${importString}
 ~~~`
     );
 
@@ -158,13 +178,9 @@ import {${specifiers
 
     if (hasInjections) {
       const child = other.derive(injections, main);
-      specifiers.map(specifier => {
-        main.import(specifier.name, specifier.alias, child);
-      });
+      for (const { name, alias } of specifiers) main.import(name, alias, child);
     } else {
-      specifiers.map(specifier => {
-        main.import(specifier.name, specifier.alias, other);
-      });
+      for (const { name, alias } of specifiers) main.import(name, alias, other);
     }
   } else {
     const {
@@ -221,28 +237,31 @@ const createModuleDefintion = async (
   resolveModule,
   resolveFileAttachments
 ) => {
+  const filteredImportCells = new Set();
+  const importCells = moduleObject.cells.filter(({ body }) => {
+    if (
+      body.type !== "ImportDeclaration" ||
+      filteredImportCells.has(body.source.value)
+    )
+      return false;
+    filteredImportCells.add(cell.body.source.value);
+  });
+
   const dependencyMap = new Map();
-
-  const importCells = moduleObject.cells.filter(
-    cell => cell.body.type === "ImportDeclaration"
-  );
-
-  const importCellsPromise = importCells.map(async cell => {
-    const fromModule = await resolveModule(cell.body.source.value);
-    dependencyMap.set(cell.body.source.value, fromModule);
+  const importCellsPromise = importCells.map(async ({ body }) => {
+    const fromModule = await resolveModule(body.source.value);
+    dependencyMap.set(body.source.value, fromModule);
   });
   await Promise.all(importCellsPromise);
 
   return function define(runtime, observer) {
-    const { cells } = moduleObject;
     const main = runtime.module();
     main.builtin(
       "FileAttachment",
       runtime.fileAttachments(resolveFileAttachments)
     );
-    cells.map(cell =>
-      createCellDefinition(cell, main, observer, dependencyMap)
-    );
+    for (const cell of moduleObject.cells)
+      createCellDefinition(cell, main, observer, dependencyMap);
   };
 };
 
