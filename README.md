@@ -22,9 +22,9 @@ viewof name = text({
 md\`Hello **\${name}**, it's nice to meet you!\`
 
 `).then(define => {
-const runtime = new Runtime();
+  const runtime = new Runtime();
 
-const module = runtime.module(define, Inpsector.into(document.body));
+  const module = runtime.module(define, Inpsector.into(document.body));
 });
 ```
 
@@ -35,7 +35,7 @@ and this [test page](https://github.com/asg017/unofficial-observablehq-compiler/
 
 ### Compiler
 
-<a href="#Compiler" name="Compiler">#</a> new <b>Compiler</b>(<i>resolve</i> = defaultResolver, <i>fileAttachmentsResolve</i> = name => name) [<>](https://github.com/asg017/unofficial-observablehq-compiler/blob/master/src/compiler.js#L119 "Source")
+<a href="#Compiler" name="Compiler">#</a> new <b>Compiler</b>(<i>resolve</i> = defaultResolver, <i>fileAttachmentsResolve</i> = name => name, <i>resolvePath</i> = defaultResolvePath) [<>](https://github.com/asg017/unofficial-observablehq-compiler/blob/master/src/compiler.js#L119 "Source")
 
 Returns a new compiler. `resolve` is an optional function that, given a `path`
 string, will resolve a new define function for a new module. This is used when
@@ -76,6 +76,12 @@ const compile = new Compiler(, fileAttachmentsResolve);
 ```
 
 By default, `fileAtachmentsResolve` simply returns the same string, so you would have to use valid absolute or relative URLs in your `FileAttachment`s.
+
+`resolvePath` is an optional function from strings to URLs which is used to turn the strings in `import` cells to URLs in [`compile.moduleToESModule`](#compile_moduleToESModule) and  [`compile.notebookToESModule`](#compile_notebookToESModule). For instance, if those functions encounter this cell:
+```javascript
+import {chart} from "@d3/bar-chart"
+```
+then `resolvePath` is called with `path="@d3/bar-chart"` and the resulting URL is included in the static `import` statements at the beginning of the generated ES module source.
 
 <a href="#compile_module" name="compile_module">#</a>compile.<b>module</b>(<i>contents</i>)
 
@@ -187,6 +193,68 @@ define(main, observer);
 ```
 
 Since `redefine` is done on a module level, an observer is not required.
+
+<a href="#compile_notebook" name="compile_notebook">#</a>compile.<b>moduleToESModule</b>(<i>contents</i>)
+
+Returns a string containing the source code of an ES module. This ES module is compiled from the Observable runtime module in the string `contents`.
+
+For example:
+
+```javascript
+const src = compile.moduleToESModule(`a = 1
+b = 2
+c = a + b`);
+```
+
+Now `src` contains the following:
+
+```javascript
+export default function define(runtime, observer) {
+  const main = runtime.module();
+
+  main.variable(observer("a")).define("a", function(){return(
+1
+)});
+  main.variable(observer("b")).define("b", function(){return(
+2
+)});
+  main.variable(observer("c")).define("c", ["a","b"], function(a,b){return(
+a + b
+)});
+  return main;
+}
+```
+
+<a href="#compile_notebook" name="compile_notebook">#</a>compile.<b>notebookToESModule</b>(<i>object</i>)
+
+Returns a string containing the source code of an ES module. This ES module is compiled from the Observable runtime module in the notebok object `object`. (See [compile.notebook](#compile_notebook)).
+
+For example:
+
+```javascript
+const src = compile.notebookToESModule({
+  nodes: [{ value: "a = 1" }, { value: "b = 2" }, { value: "c = a + b" }]
+});
+```
+
+Now `src` contains the following:
+
+```javascript
+export default function define(runtime, observer) {
+  const main = runtime.module();
+
+  main.variable(observer("a")).define("a", function(){return(
+1
+)});
+  main.variable(observer("b")).define("b", function(){return(
+2
+)});
+  main.variable(observer("c")).define("c", ["a","b"], function(a,b){return(
+a + b
+)});
+  return main;
+}
+```
 
 ## License
 
