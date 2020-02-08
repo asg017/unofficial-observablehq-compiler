@@ -244,7 +244,8 @@ const createModuleDefintion = async (
       filteredImportCells.has(body.source.value)
     )
       return false;
-    filteredImportCells.add(cell.body.source.value);
+    filteredImportCells.add(body.source.value);
+    return true;
   });
 
   const dependencyMap = new Map();
