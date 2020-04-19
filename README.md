@@ -11,7 +11,7 @@ import { Inspector, Runtime } from "@observablehq/runtime";
 
 const compile = new compiler.Compiler();
 
-const define = compile.module(`
+compile.module(`
 import {text} from '@jashkenas/inputs'
 
 viewof name = text({
@@ -21,11 +21,11 @@ viewof name = text({
 
 md\`Hello **\${name}**, it's nice to meet you!\`
 
-`);
+`).then(define => {
+  const runtime = new Runtime();
 
-const runtime = new Runtime();
-
-const module = runtime.module(define, Inpsector.into(document.body));
+  const module = runtime.module(define, Inpsector.into(document.body));
+});
 ```
 
 For more live examples and functionality, take a look at the [announcement notebook](https://observablehq.com/d/74f872c4fde62e35)
@@ -35,13 +35,13 @@ and this [test page](https://github.com/asg017/unofficial-observablehq-compiler/
 
 ### Compiler
 
-<a href="#Compiler" name="Compiler">#</a> new <b>Compiler</b>(<i>resolve</i> = defaultResolver, <i>fileAttachmentsResolve</i> = name => name) [<>](https://github.com/asg017/unofficial-observablehq-compiler/blob/master/src/compiler.js#L119 "Source")
+<a href="#Compiler" name="Compiler">#</a> new <b>Compiler</b>(<i>resolve</i> = defaultResolver, <i>fileAttachmentsResolve</i> = name => name, <i>resolvePath</i> = defaultResolvePath) [<>](https://github.com/asg017/unofficial-observablehq-compiler/blob/master/src/compiler.js#L119 "Source")
 
 Returns a new compiler. `resolve` is an optional function that, given a `path`
 string, will resolve a new define function for a new module. This is used when
 the compiler comes across an import statement - for example:
 
-```
+```javascript
 import {chart} from "@d3/bar-chart"
 ```
 
@@ -77,16 +77,22 @@ const compile = new Compiler(, fileAttachmentsResolve);
 
 By default, `fileAtachmentsResolve` simply returns the same string, so you would have to use valid absolute or relative URLs in your `FileAttachment`s.
 
+`resolvePath` is an optional function from strings to URLs which is used to turn the strings in `import` cells to URLs in [`compile.moduleToESModule`](#compile_moduleToESModule) and  [`compile.notebookToESModule`](#compile_notebookToESModule). For instance, if those functions encounter this cell:
+```javascript
+import {chart} from "@d3/bar-chart"
+```
+then `resolvePath` is called with `path="@d3/bar-chart"` and the resulting URL is included in the static `import` statements at the beginning of the generated ES module source.
+
 <a href="#compile_module" name="compile_module">#</a>compile.<b>module</b>(<i>contents</i>)
 
 Returns a define function. `contents` is a string that defines a "module", which
 is a list of "cells" (both defintions from [@observablehq/parser](https://github.com/observablehq/parser)).
-It must be compatible with [`parseModule`](https://github.com/observablehq/parser#parseModule).
+It must be compatible with [`parseModule`](https://github.com/observablehq/parser#parseModule). This fetches all imports so it is asynchronous.
 
 For example:
 
 ```javascript
-const define = compile.module(`a = 1
+const define = await compile.module(`a = 1
 b = 2
 c = a + b`);
 ```
@@ -115,10 +121,12 @@ e.g. `"id"`, `"slug"`, `"owner"`, etc. which are currently ignored by the
 compiler. Similarly, the cell objects in `"nodes"` ordinarily contain `"id"` and
 `"pinned"` fields which are also unused here.
 
+This fetches all imports so it is asynchronous.
+
 For example:
 
 ```javascript
-const define = compile.notebook({
+const define = await compile.notebook({
   nodes: [{ value: "a = 1" }, { value: "b = 2" }, { value: "c = a + b" }]
 });
 ```
@@ -132,7 +140,7 @@ const main = runtime.module(define, Inspector.into(document.body));
 
 <a href="#compile_cell" name="compile_cell">#</a>compile.<b>cell</b>(<i>contents</i>)
 
-Returns an object that has `define` and `redefine` functions that would define or redefine variables in the given cell to a specified module. `contents` is input for the [`parseCell`](https://github.com/observablehq/parser#parseCell) function. If the cell is not an ImportDeclaration, then the `redefine` functions can be used to redefine previously existing variables in a module.
+Returns an object that has `define` and `redefine` functions that would define or redefine variables in the given cell to a specified module. `contents` is input for the [`parseCell`](https://github.com/observablehq/parser#parseCell) function. If the cell is not an ImportDeclaration, then the `redefine` functions can be used to redefine previously existing variables in a module. This is an asynchronous function because if the cell is an import, the imported notebook is fetched.
 
 ```javascript
 let define, redefine;
@@ -147,7 +155,7 @@ const main = runtime.module(define, Inspector.into(document.body));
 
 await main.value("a") // 1
 
-{define, redefine} = compile.cell(`a = 20`);
+{define, redefine} = await compile.cell(`a = 20`);
 
 redefine(main);
 
@@ -156,9 +164,9 @@ await main.value("c"); // 22
 
 define(main); // would throw an error, since a is already defined in main
 
-{define} = compile.cell(`x = 2`);
+{define} = await compile.cell(`x = 2`);
 define(main);
-{define} = compile.cell(`y = x * 4`);
+{define} = await compile.cell(`y = x * 4`);
 define(main);
 
 await main.value("y") // 8
@@ -178,13 +186,75 @@ const runtime = new Runtime();
 const observer = Inspector.into(document.body);
 const main = runtime.module(define, observer);
 
-{define} = compile.cell(`c = a + b`);
+{define} = await compile.cell(`c = a + b`);
 
 define(main, observer);
 
 ```
 
 Since `redefine` is done on a module level, an observer is not required.
+
+<a href="#compile_notebook" name="compile_notebook">#</a>compile.<b>moduleToESModule</b>(<i>contents</i>)
+
+Returns a string containing the source code of an ES module. This ES module is compiled from the Observable runtime module in the string `contents`.
+
+For example:
+
+```javascript
+const src = compile.moduleToESModule(`a = 1
+b = 2
+c = a + b`);
+```
+
+Now `src` contains the following:
+
+```javascript
+export default function define(runtime, observer) {
+  const main = runtime.module();
+
+  main.variable(observer("a")).define("a", function(){return(
+1
+)});
+  main.variable(observer("b")).define("b", function(){return(
+2
+)});
+  main.variable(observer("c")).define("c", ["a","b"], function(a,b){return(
+a + b
+)});
+  return main;
+}
+```
+
+<a href="#compile_notebook" name="compile_notebook">#</a>compile.<b>notebookToESModule</b>(<i>object</i>)
+
+Returns a string containing the source code of an ES module. This ES module is compiled from the Observable runtime module in the notebok object `object`. (See [compile.notebook](#compile_notebook)).
+
+For example:
+
+```javascript
+const src = compile.notebookToESModule({
+  nodes: [{ value: "a = 1" }, { value: "b = 2" }, { value: "c = a + b" }]
+});
+```
+
+Now `src` contains the following:
+
+```javascript
+export default function define(runtime, observer) {
+  const main = runtime.module();
+
+  main.variable(observer("a")).define("a", function(){return(
+1
+)});
+  main.variable(observer("b")).define("b", function(){return(
+2
+)});
+  main.variable(observer("c")).define("c", ["a","b"], function(a,b){return(
+a + b
+)});
+  return main;
+}
+```
 
 ## License
 
