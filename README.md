@@ -194,7 +194,7 @@ define(main, observer);
 
 Since `redefine` is done on a module level, an observer is not required.
 
-<a href="#compile_notebook" name="compile_notebook">#</a>compile.<b>moduleToESModule</b>(<i>contents</i>)
+<a href="#compile_moduleToESModule" name="compile_moduleToESModule">#</a>compile.<b>moduleToESModule</b>(<i>contents</i>)
 
 Returns a string containing the source code of an ES module. This ES module is compiled from the Observable runtime module in the string `contents`.
 
@@ -225,7 +225,7 @@ a + b
 }
 ```
 
-<a href="#compile_notebook" name="compile_notebook">#</a>compile.<b>notebookToESModule</b>(<i>object</i>)
+<a href="#compile_notebookToESModule" name="compile_notebookToESModule">#</a>compile.<b>notebookToESModule</b>(<i>object</i>)
 
 Returns a string containing the source code of an ES module. This ES module is compiled from the Observable runtime module in the notebok object `object`. (See [compile.notebook](#compile_notebook)).
 
