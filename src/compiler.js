@@ -156,6 +156,8 @@ const createCellDefinition = (
   dependencyMap,
   define = true
 ) => {
+  let variables = [];
+  let tmp_variable_store = null;
   if (cell.body.type === "ImportDeclaration") {
     const {
       specifiers,
@@ -208,12 +210,14 @@ ${importString}
       const mutableName = `mutable ${cellName}`;
       if (define) {
         main.variable(null).define(initialName, cellReferences, cellFunction);
-        main
+        tmp_variable_store = main
           .variable(observer(mutableName))
           .define(mutableName, ["Mutable", initialName], (M, _) => new M(_));
-        main
+        variables.push(tmp_variable_store)
+        tmp_variable_store = main
           .variable(observer(cellName))
           .define(cellName, [mutableName], _ => _.generator);
+          variables.push(tmp_variable_store)
       } else {
         main.redefine(initialName, cellReferences, cellFunction);
         main.redefine(
@@ -224,13 +228,16 @@ ${importString}
         main.redefine(cellName, [mutableName], _ => _.generator);
       }
     } else {
-      if (define)
-        main
+      if (define){
+        tmp_variable_store = main
           .variable(observer(cellName))
           .define(cellName, cellReferences, cellFunction);
+          variables.push(tmp_variable_store)
+      }
       else main.redefine(cellName, cellReferences, cellFunction);
     }
   }
+  return variables;
 };
 const createModuleDefintion = async (
   moduleObject,
@@ -427,7 +434,8 @@ export class Compiler {
     }
     return {
       define(module, observer) {
-        createCellDefinition(cell, module, observer, dependencyMap, true);
+        //return [variables] when creating a cell
+        return createCellDefinition(cell, module, observer, dependencyMap, true);
       },
       redefine(module, observer) {
         createCellDefinition(cell, module, observer, dependencyMap, false);
