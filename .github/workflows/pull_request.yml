@@ -1,6 +1,6 @@
 name: Pull Request Demos
 
-on: 
+on:
   pull_request:
     types: [opened, reopened, synchronize]
 
@@ -9,15 +9,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
-    - uses: actions/setup-node@v1.1.0
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v2
     - run: npm install
     - run: npm run build
     - run: npm install -g surge
     - run: surge --domain unofficial-observablehq-compiler-demo-${{ github.event.number }}.surge.sh --project .
-      env: 
+      env:
         SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
-    - uses: actions/github-script@0.2.0
+    - uses: actions/github-script@v3
       with:
           github-token: ${{github.token}}
           script: |
