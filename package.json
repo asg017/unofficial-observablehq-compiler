@@ -18,7 +18,7 @@
   "scripts": {
     "build": "rollup -c",
     "format": "prettier --write src/**/*.js",
-    "test": "npm run build && tape 'test/**/*-test.js' && npm run test-format",
+    "test": "npm run build && tape test/*-test.js && npm run test-format",
     "test-format": "prettier --check src/**/*.js",
     "test-html": "http-server",
     "prepublishOnly": "npm run build",

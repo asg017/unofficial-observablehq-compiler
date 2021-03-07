@@ -47,7 +47,11 @@
         window.MODULE = rt.module(define, observer);
 
         compile.cell(`d = 200`).then(({ define: defineCell }) => {
-          defineCell(window.MODULE, observer);
+          const variables = defineCell(window.MODULE, observer);
+          console.log(
+            "Define variable d= 200, created following variables: ",
+            variables
+          );
         });
 
         compile.cell(`a = -300`).then(({ redefine: redefineCell }) => {
@@ -65,11 +69,39 @@
             `import {hello } with {myName as name} from "@tmcw/hello-world"`
           )
           .then(({ define: defineCell }) => {
-            defineCell(window.MODULE, observer);
+            const variables = defineCell(window.MODULE, observer);
+            console.log(
+              'Define import {hello } with {myName as name} from "@tmcw/hello-world", created following variables: ',
+              variables
+            );
 
             compile.cell(`hello`).then(({ define: defineCell }) => {
-              defineCell(window.MODULE, observer);
+              const variables = defineCell(window.MODULE, observer);
+              console.log(
+                "Define hello, created following variables: ",
+                variables
+              );
             });
+
+            compile
+              .cell(`viewof some_viewof = DOM.range()`)
+              .then(({ define: defineCell }) => {
+                const variables = defineCell(window.MODULE, observer);
+                console.log(
+                  "Define viewof some_viewof = DOM.range(), created following variables: ",
+                  variables
+                );
+              });
+
+            compile
+              .cell(`mutable some_mutable = 123`)
+              .then(({ define: defineCell }) => {
+                const variables = defineCell(window.MODULE, observer);
+                console.log(
+                  "Define mutable some_mutable = 123, created following variables: ",
+                  variables
+                );
+              });
           });
       });
   </script>
