@@ -68,7 +68,7 @@ const setupRegularCell = cell => {
   return { cellName: name, references, bodyText, cellReferences };
 };
 
-const createRegularCellDefintion = cell => {
+export const createRegularCellDefintion = cell => {
   const { cellName, references, bodyText, cellReferences } = setupRegularCell(
     cell
   );
@@ -149,7 +149,7 @@ const setupImportCell = cell => {
   return { specifiers, hasInjections, injections, importString };
 };
 
-const createCellDefinition = (
+export const createCellDefinition = (
   cell,
   main,
   observer,
@@ -163,13 +163,16 @@ const createCellDefinition = (
       injections,
       importString
     } = setupImportCell(cell);
+    const cells = [];
     // this will display extra names for viewof / mutable imports (for now?)
-    main.variable(observer()).define(
-      null,
-      ["md"],
-      md => md`~~~javascript
+    cells.push(
+      main.variable(observer()).define(
+        null,
+        ["md"],
+        md => md`~~~javascript
 ${importString}
 ~~~`
+      )
     );
 
     const other = main._runtime.module(
@@ -178,10 +181,13 @@ ${importString}
 
     if (hasInjections) {
       const child = other.derive(injections, main);
-      for (const { name, alias } of specifiers) main.import(name, alias, child);
+      for (const { name, alias } of specifiers)
+        cells.push(main.import(name, alias, child));
     } else {
-      for (const { name, alias } of specifiers) main.import(name, alias, other);
+      for (const { name, alias } of specifiers)
+        cells.push(main.import(name, alias, other));
     }
+    return cells;
   } else {
     const {
       cellName,
@@ -191,12 +197,14 @@ ${importString}
     if (cell.id && cell.id.type === "ViewExpression") {
       const reference = `viewof ${cellName}`;
       if (define) {
-        main
-          .variable(observer(reference))
-          .define(reference, cellReferences, cellFunction);
-        main
-          .variable(observer(cellName))
-          .define(cellName, ["Generators", reference], (G, _) => G.input(_));
+        return [
+          main
+            .variable(observer(reference))
+            .define(reference, cellReferences, cellFunction),
+          main
+            .variable(observer(cellName))
+            .define(cellName, ["Generators", reference], (G, _) => G.input(_))
+        ];
       } else {
         main.redefine(reference, cellReferences, cellFunction);
         main.redefine(cellName, ["Generators", reference], (G, _) =>
@@ -207,13 +215,15 @@ ${importString}
       const initialName = `initial ${cellName}`;
       const mutableName = `mutable ${cellName}`;
       if (define) {
-        main.variable(null).define(initialName, cellReferences, cellFunction);
-        main
-          .variable(observer(mutableName))
-          .define(mutableName, ["Mutable", initialName], (M, _) => new M(_));
-        main
-          .variable(observer(cellName))
-          .define(cellName, [mutableName], _ => _.generator);
+        return [
+          main.variable(null).define(initialName, cellReferences, cellFunction),
+          main
+            .variable(observer(mutableName))
+            .define(mutableName, ["Mutable", initialName], (M, _) => new M(_)),
+          main
+            .variable(observer(cellName))
+            .define(cellName, [mutableName], _ => _.generator)
+        ];
       } else {
         main.redefine(initialName, cellReferences, cellFunction);
         main.redefine(
@@ -224,11 +234,11 @@ ${importString}
         main.redefine(cellName, [mutableName], _ => _.generator);
       }
     } else {
-      if (define)
-        main
-          .variable(observer(cellName))
-          .define(cellName, cellReferences, cellFunction);
-      else main.redefine(cellName, cellReferences, cellFunction);
+      return define
+        ? main
+            .variable(observer(cellName))
+            .define(cellName, cellReferences, cellFunction)
+        : main.redefine(cellName, cellReferences, cellFunction);
     }
   }
 };
@@ -397,10 +407,11 @@ ${ESMVariables(moduleObject, importMap) || ""}
 };
 
 const defaultResolver = async path => {
+  //throw Error("need resolver");
   const source = extractPath(path);
   return import(`https://api.observablehq.com/${source}.js?v=3`).then(
     m => m.default
-  );
+  ); //*/
 };
 const defaultResolvePath = path => {
   const source = extractPath(path);
