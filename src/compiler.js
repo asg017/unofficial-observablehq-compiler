@@ -2,11 +2,6 @@ import { parseCell, parseModule, walk } from "@observablehq/parser";
 import { simple } from "acorn-walk";
 import { extractPath } from "./utils";
 
-const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
-const GeneratorFunction = Object.getPrototypeOf(function*() {}).constructor;
-const AsyncGeneratorFunction = Object.getPrototypeOf(async function*() {})
-  .constructor;
-
 const setupRegularCell = cell => {
   let name = null;
   if (cell.id && cell.id.name) name = cell.id.name;
@@ -68,31 +63,6 @@ const setupRegularCell = cell => {
   return { cellName: name, references, bodyText, cellReferences };
 };
 
-const createRegularCellDefintion = cell => {
-  const { cellName, references, bodyText, cellReferences } = setupRegularCell(
-    cell
-  );
-
-  let code;
-  if (cell.body.type !== "BlockStatement") {
-    if (cell.async)
-      code = `return (async function(){ return (${bodyText});})()`;
-    else code = `return (function(){ return (${bodyText});})()`;
-  } else code = bodyText;
-
-  let f;
-  if (cell.generator && cell.async)
-    f = new AsyncGeneratorFunction(...references, code);
-  else if (cell.async) f = new AsyncFunction(...references, code);
-  else if (cell.generator) f = new GeneratorFunction(...references, code);
-  else f = new Function(...references, code);
-  return {
-    cellName,
-    cellFunction: f,
-    cellReferences
-  };
-};
-
 const setupImportCell = cell => {
   const specifiers = [];
   if (cell.body.specifiers)
@@ -149,124 +119,7 @@ const setupImportCell = cell => {
   return { specifiers, hasInjections, injections, importString };
 };
 
-const createCellDefinition = (
-  cell,
-  main,
-  observer,
-  dependencyMap,
-  define = true
-) => {
-  if (cell.body.type === "ImportDeclaration") {
-    const {
-      specifiers,
-      hasInjections,
-      injections,
-      importString
-    } = setupImportCell(cell);
-    // this will display extra names for viewof / mutable imports (for now?)
-    main.variable(observer()).define(
-      null,
-      ["md"],
-      md => md`~~~javascript
-${importString}
-~~~`
-    );
-
-    const other = main._runtime.module(
-      dependencyMap.get(cell.body.source.value)
-    );
-
-    if (hasInjections) {
-      const child = other.derive(injections, main);
-      for (const { name, alias } of specifiers) main.import(name, alias, child);
-    } else {
-      for (const { name, alias } of specifiers) main.import(name, alias, other);
-    }
-  } else {
-    const {
-      cellName,
-      cellFunction,
-      cellReferences
-    } = createRegularCellDefintion(cell);
-    if (cell.id && cell.id.type === "ViewExpression") {
-      const reference = `viewof ${cellName}`;
-      if (define) {
-        main
-          .variable(observer(reference))
-          .define(reference, cellReferences, cellFunction);
-        main
-          .variable(observer(cellName))
-          .define(cellName, ["Generators", reference], (G, _) => G.input(_));
-      } else {
-        main.redefine(reference, cellReferences, cellFunction);
-        main.redefine(cellName, ["Generators", reference], (G, _) =>
-          G.input(_)
-        );
-      }
-    } else if (cell.id && cell.id.type === "MutableExpression") {
-      const initialName = `initial ${cellName}`;
-      const mutableName = `mutable ${cellName}`;
-      if (define) {
-        main.variable(null).define(initialName, cellReferences, cellFunction);
-        main
-          .variable(observer(mutableName))
-          .define(mutableName, ["Mutable", initialName], (M, _) => new M(_));
-        main
-          .variable(observer(cellName))
-          .define(cellName, [mutableName], _ => _.generator);
-      } else {
-        main.redefine(initialName, cellReferences, cellFunction);
-        main.redefine(
-          mutableName,
-          ["Mutable", initialName],
-          (M, _) => new M(_)
-        );
-        main.redefine(cellName, [mutableName], _ => _.generator);
-      }
-    } else {
-      if (define)
-        main
-          .variable(observer(cellName))
-          .define(cellName, cellReferences, cellFunction);
-      else main.redefine(cellName, cellReferences, cellFunction);
-    }
-  }
-};
-const createModuleDefintion = async (
-  moduleObject,
-  resolveModule,
-  resolveFileAttachments
-) => {
-  const filteredImportCells = new Set();
-  const importCells = moduleObject.cells.filter(({ body }) => {
-    if (
-      body.type !== "ImportDeclaration" ||
-      filteredImportCells.has(body.source.value)
-    )
-      return false;
-    filteredImportCells.add(body.source.value);
-    return true;
-  });
-
-  const dependencyMap = new Map();
-  const importCellsPromise = importCells.map(async ({ body }) => {
-    const fromModule = await resolveModule(body.source.value);
-    dependencyMap.set(body.source.value, fromModule);
-  });
-  await Promise.all(importCellsPromise);
-
-  return function define(runtime, observer) {
-    const main = runtime.module();
-    main.builtin(
-      "FileAttachment",
-      runtime.fileAttachments(resolveFileAttachments)
-    );
-    for (const cell of moduleObject.cells)
-      createCellDefinition(cell, main, observer, dependencyMap);
-  };
-};
-
-const ESMImports = (moduleObject, resolvePath) => {
+const ESMImports = (moduleObject, resolveImportPath) => {
   const importMap = new Map();
   let importSrc = "";
   let j = 0;
@@ -276,7 +129,7 @@ const ESMImports = (moduleObject, resolvePath) => {
       continue;
 
     const defineName = `define${++j}`;
-    const fromPath = resolvePath(body.source.value);
+    const fromPath = resolveImportPath(body.source.value);
     importMap.set(body.source.value, { defineName, fromPath });
     importSrc += `import ${defineName} from "${fromPath}";\n`;
   }
@@ -386,8 +239,12 @@ ${bodyText}
     })
     .join("\n");
 };
-const createESModule = (moduleObject, resolvePath, resolveFileAttachments) => {
-  const { importSrc, importMap } = ESMImports(moduleObject, resolvePath);
+const createESModule = (
+  moduleObject,
+  resolveImportPath,
+  resolveFileAttachments
+) => {
+  const { importSrc, importMap } = ESMImports(moduleObject, resolveImportPath);
   return `${importSrc}export default function define(runtime, observer) {
   const main = runtime.module();
 ${ESMAttachments(moduleObject, resolveFileAttachments)}
@@ -396,71 +253,32 @@ ${ESMVariables(moduleObject, importMap) || ""}
 }`;
 };
 
-const defaultResolver = async path => {
-  const source = extractPath(path);
-  return import(`https://api.observablehq.com/${source}.js?v=3`).then(
-    m => m.default
-  );
-};
-const defaultResolvePath = path => {
+function defaultResolveImportPath(path) {
   const source = extractPath(path);
   return `https://api.observablehq.com/${source}.js?v=3`;
-};
+}
 
+function defaultResolveFileAttachments(name) {
+  return name;
+}
 export class Compiler {
-  constructor(
-    resolve = defaultResolver,
-    resolveFileAttachments = name => name,
-    resolvePath = defaultResolvePath
-  ) {
-    this.resolve = resolve;
+  constructor(params = {}) {
+    const {
+      resolveFileAttachments = defaultResolveFileAttachments,
+      resolveImportPath = defaultResolveImportPath
+    } = params;
     this.resolveFileAttachments = resolveFileAttachments;
-    this.resolvePath = resolvePath;
+    this.resolveImportPath = resolveImportPath;
   }
-  async cell(text) {
-    const cell = parseCell(text);
-    cell.input = text;
-    const dependencyMap = new Map();
-    if (cell.body.type === "ImportDeclaration") {
-      const fromModule = await this.resolve(cell.body.source.value);
-      dependencyMap.set(cell.body.source.value, fromModule);
-    }
-    return {
-      define(module, observer) {
-        createCellDefinition(cell, module, observer, dependencyMap, true);
-      },
-      redefine(module, observer) {
-        createCellDefinition(cell, module, observer, dependencyMap, false);
-      }
-    };
-  }
-
-  async module(text) {
+  module(text) {
     const m1 = parseModule(text);
-    return await createModuleDefintion(
+    return createESModule(
       m1,
-      this.resolve,
+      this.resolveImportPath,
       this.resolveFileAttachments
     );
   }
-  async notebook(obj) {
-    const cells = obj.nodes.map(({ value }) => {
-      const cell = parseCell(value);
-      cell.input = value;
-      return cell;
-    });
-    return await createModuleDefintion(
-      { cells },
-      this.resolve,
-      this.resolveFileAttachments
-    );
-  }
-
-  moduleToESModule(text) {
-    const m1 = parseModule(text);
-    return createESModule(m1, this.resolvePath, this.resolveFileAttachments);
-  }
-  notebookToESModule(obj) {
+  notebook(obj) {
     const cells = obj.nodes.map(({ value }) => {
       const cell = parseCell(value);
       cell.input = value;
@@ -468,7 +286,7 @@ export class Compiler {
     });
     return createESModule(
       { cells },
-      this.resolvePath,
+      this.resolveImportPath,
       this.resolveFileAttachments
     );
   }

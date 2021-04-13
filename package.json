@@ -33,7 +33,7 @@
     "compiler"
   ],
   "dependencies": {
-    "@observablehq/parser": "^3.0.0",
+    "@observablehq/parser": "4.2",
     "acorn-walk": "^7.0.0"
   },
   "devDependencies": {
