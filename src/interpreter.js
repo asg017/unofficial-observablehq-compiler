@@ -1,6 +1,11 @@
 import { parseCell, parseModule } from "@observablehq/parser";
 import { setupRegularCell, setupImportCell, extractPath } from "./utils";
 
+const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
+const GeneratorFunction = Object.getPrototypeOf(function*() {}).constructor;
+const AsyncGeneratorFunction = Object.getPrototypeOf(async function*() {})
+  .constructor;
+
 function createRegularCellDefinition(cell) {
   const { cellName, references, bodyText, cellReferences } = setupRegularCell(
     cell
@@ -132,7 +137,7 @@ export class Interpreter {
         return [
           module
             .variable(observer(reference))
-            .define(reference, cellReferences, cellFunction),
+            .define(reference, cellReferences, cellFunction.bind(this)),
           module
             .variable(this.observeViewofValues ? observer(cellName) : null)
             .define(cellName, ["Generators", reference], (G, _) => G.input(_))
@@ -155,7 +160,7 @@ export class Interpreter {
         return [
           module
             .variable(observer(cellName))
-            .define(cellName, cellReferences, cellFunction)
+            .define(cellName, cellReferences, cellFunction.bind(this))
         ];
       }
     }
