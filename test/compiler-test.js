@@ -379,3 +379,32 @@ c
 
   t.end();
 });
+
+test("Compiler: multiple refs", async t => {
+  const compile = new Compiler();
+  const runtime = new Runtime();
+
+  const src = compile.module(`a = 1; b = a,a,a,a;`);
+
+  t.equal(
+    src,
+    `export default function define(runtime, observer) {
+  const main = runtime.module();
+
+  main.variable(observer("a")).define("a", function(){return(
+1
+)});
+  main.variable(observer("b")).define("b", ["a"], function(a){return(
+a,a,a,a
+)});
+  return main;
+}`
+  );
+  const define = eval(`(${src.substring("export default ".length)})`);
+  const main = runtime.module(define);
+
+  t.equals(await main.value("a"), 1);
+  t.equals(await main.value("b"), 1);
+
+  t.end();
+});

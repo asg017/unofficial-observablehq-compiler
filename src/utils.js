@@ -133,5 +133,10 @@ export function setupRegularCell(cell) {
       return $string;
     } else return ref.name;
   });
-  return { cellName: name, references, bodyText, cellReferences };
+  return {
+    cellName: name,
+    references: Array.from(new Set(references)),
+    bodyText,
+    cellReferences: Array.from(new Set(cellReferences))
+  };
 }
