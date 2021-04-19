@@ -8,7 +8,7 @@ export default {
       compact: true,
       file: "dist/index.js",
       format: "umd",
-      name: "index.js"
+      name: "unofficial_observablehq_compiler"
     },
     {
       compact: true,
