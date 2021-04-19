@@ -40,7 +40,11 @@ function ESMAttachments(moduleObject, resolveFileAttachments) {
 }
 
 function ESMVariables(moduleObject, importMap, params) {
-  const { defineImportMarkdown, observeViewofValues } = params;
+  const {
+    defineImportMarkdown,
+    observeViewofValues,
+    observeMutableValues
+  } = params;
 
   let childJ = 0;
   return moduleObject.cells
@@ -117,7 +121,9 @@ ${bodyText}
           const mutableName = `"mutable ${cellName}"`;
           src += `  main.define(${initialName}, ${cellReferencesString}${cellFunction});
   main.variable(observer(${mutableName})).define(${mutableName}, ["Mutable", ${initialName}], (M, _) => new M(_));
-  main.variable(observer("${cellName}")).define("${cellName}", [${mutableName}], _ => _.generator);`;
+  main.variable(${
+    observeMutableValues ? `observer("${cellName}")` : `null`
+  }).define("${cellName}", [${mutableName}], _ => _.generator);`;
         } else {
           src += `  main.variable(observer(${cellNameString})).define(${
             cellName ? cellNameString + ", " : ""
@@ -133,7 +139,8 @@ function createESModule(moduleObject, params = {}) {
     resolveImportPath,
     resolveFileAttachments,
     defineImportMarkdown,
-    observeViewofValues
+    observeViewofValues,
+    observeMutableValues
   } = params;
   const { importSrc, importMap } = ESMImports(moduleObject, resolveImportPath);
   return `${importSrc}export default function define(runtime, observer) {
@@ -141,7 +148,8 @@ function createESModule(moduleObject, params = {}) {
 ${ESMAttachments(moduleObject, resolveFileAttachments)}
 ${ESMVariables(moduleObject, importMap, {
   defineImportMarkdown,
-  observeViewofValues
+  observeViewofValues,
+  observeMutableValues
 }) || ""}
   return main;
 }`;
@@ -161,12 +169,14 @@ export class Compiler {
       resolveFileAttachments = defaultResolveFileAttachments,
       resolveImportPath = defaultResolveImportPath,
       defineImportMarkdown = true,
-      observeViewofValues = true
+      observeViewofValues = true,
+      observeMutableValues = true
     } = params;
     this.resolveFileAttachments = resolveFileAttachments;
     this.resolveImportPath = resolveImportPath;
     this.defineImportMarkdown = defineImportMarkdown;
     this.observeViewofValues = observeViewofValues;
+    this.observeMutableValues = observeMutableValues;
   }
   module(text, params = {}) {
     let m1 = parseModule(text);
@@ -182,7 +192,8 @@ export class Compiler {
       resolveImportPath: this.resolveImportPath,
       resolveFileAttachments: this.resolveFileAttachments,
       defineImportMarkdown: this.defineImportMarkdown,
-      observeViewofValues: this.observeViewofValues
+      observeViewofValues: this.observeViewofValues,
+      observeMutableValues: this.observeMutableValues
     });
   }
   notebook(obj) {
@@ -197,7 +208,8 @@ export class Compiler {
         resolveImportPath: this.resolveImportPath,
         resolveFileAttachments: this.resolveFileAttachments,
         defineImportMarkdown: this.defineImportMarkdown,
-        observeViewofValues: this.observeViewofValues
+        observeViewofValues: this.observeViewofValues,
+        observeMutableValues: this.observeMutableValues
       }
     );
   }

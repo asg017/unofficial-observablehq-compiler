@@ -50,7 +50,8 @@ export class Interpreter {
       resolveImportPath = defaultResolveImportPath,
       resolveFileAttachments = defaultResolveFileAttachments,
       defineImportMarkdown = true,
-      observeViewofValues = true
+      observeViewofValues = true,
+      observeMutableValues = true
     } = params;
 
     // can't be this.module bc of async module().
@@ -62,6 +63,7 @@ export class Interpreter {
     this.resolveFileAttachments = resolveFileAttachments;
     this.defineImportMarkdown = defineImportMarkdown;
     this.observeViewofValues = observeViewofValues;
+    this.observeMutableValues = observeMutableValues;
   }
 
   async module(input, module, observer) {
@@ -69,6 +71,7 @@ export class Interpreter {
     observer = observer || this.defaultObserver;
 
     if (!module) throw Error("No module provided.");
+    if (!observer) throw Error("No observer provided.");
 
     const parsedModule = parseModule(input);
     const cellPromises = [];
@@ -84,6 +87,7 @@ export class Interpreter {
     observer = observer || this.defaultObserver;
 
     if (!module) throw Error("No module provided.");
+    if (!observer) throw Error("No observer provided.");
 
     let cell;
     if (typeof input === "string") {
@@ -153,7 +157,7 @@ export class Interpreter {
             .variable(observer(mutableName))
             .define(mutableName, ["Mutable", initialName], (M, _) => new M(_)),
           module
-            .variable(observer(cellName))
+            .variable(this.observeMutableValues ? observer(cellName) : null)
             .define(cellName, [mutableName], _ => _.generator)
         ];
       } else {
