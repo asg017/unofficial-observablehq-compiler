@@ -1,6 +1,16 @@
 # @alex.garcia/unofficial-observablehq-compiler [![CircleCI](https://circleci.com/gh/asg017/unofficial-observablehq-compiler.svg?style=svg)](https://circleci.com/gh/asg017/unofficial-observablehq-compiler)
 
+
+
+
 An unoffical compiler for Observable notebooks (glue between the Observable parser and runtime)
+
+## ⚠️This library is currently under construction!⚠️
+
+The README below is for `v0.5.0`, but `v0.6.0` is currently in alpha and has several improvements to this library + API that you probably care about. Check out [#29](https://github.com/asg017/unofficial-observablehq-compiler/pull/29) to stay in the loop, and check out [that version's README](https://github.com/asg017/unofficial-observablehq-compiler/tree/beta) for docs on the soon-to-be-released `v0.6.0`. 
+
+---
+
 
 This compiler will compile "observable syntax" into "javascript syntax".
 For example -
