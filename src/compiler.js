@@ -156,6 +156,8 @@ const createCellDefinition = (
   dependencyMap,
   define = true
 ) => {
+  let variables = [];
+  let tmp_variable_store = null;
   if (cell.body.type === "ImportDeclaration") {
     const {
       specifiers,
@@ -164,13 +166,14 @@ const createCellDefinition = (
       importString
     } = setupImportCell(cell);
     // this will display extra names for viewof / mutable imports (for now?)
-    main.variable(observer()).define(
+    tmp_variable_store = main.variable(observer()).define(
       null,
       ["md"],
       md => md`~~~javascript
 ${importString}
 ~~~`
     );
+    variables.push(tmp_variable_store);
 
     const other = main._runtime.module(
       dependencyMap.get(cell.body.source.value)
@@ -178,9 +181,15 @@ ${importString}
 
     if (hasInjections) {
       const child = other.derive(injections, main);
-      for (const { name, alias } of specifiers) main.import(name, alias, child);
+      for (const { name, alias } of specifiers) {
+        tmp_variable_store = main.import(name, alias, child);
+        variables.push(tmp_variable_store);
+      }
     } else {
-      for (const { name, alias } of specifiers) main.import(name, alias, other);
+      for (const { name, alias } of specifiers) {
+        tmp_variable_store = main.import(name, alias, other);
+        variables.push(tmp_variable_store);
+      }
     }
   } else {
     const {
@@ -191,12 +200,15 @@ ${importString}
     if (cell.id && cell.id.type === "ViewExpression") {
       const reference = `viewof ${cellName}`;
       if (define) {
-        main
+        tmp_variable_store = main
           .variable(observer(reference))
           .define(reference, cellReferences, cellFunction);
-        main
+        variables.push(tmp_variable_store);
+
+        tmp_variable_store = main
           .variable(observer(cellName))
           .define(cellName, ["Generators", reference], (G, _) => G.input(_));
+        variables.push(tmp_variable_store);
       } else {
         main.redefine(reference, cellReferences, cellFunction);
         main.redefine(cellName, ["Generators", reference], (G, _) =>
@@ -207,13 +219,20 @@ ${importString}
       const initialName = `initial ${cellName}`;
       const mutableName = `mutable ${cellName}`;
       if (define) {
-        main.variable(null).define(initialName, cellReferences, cellFunction);
-        main
+        tmp_variable_store = main
+          .variable(null)
+          .define(initialName, cellReferences, cellFunction);
+        variables.push(tmp_variable_store);
+
+        tmp_variable_store = main
           .variable(observer(mutableName))
           .define(mutableName, ["Mutable", initialName], (M, _) => new M(_));
-        main
+        variables.push(tmp_variable_store);
+
+        tmp_variable_store = main
           .variable(observer(cellName))
           .define(cellName, [mutableName], _ => _.generator);
+        variables.push(tmp_variable_store);
       } else {
         main.redefine(initialName, cellReferences, cellFunction);
         main.redefine(
@@ -224,13 +243,15 @@ ${importString}
         main.redefine(cellName, [mutableName], _ => _.generator);
       }
     } else {
-      if (define)
-        main
+      if (define) {
+        tmp_variable_store = main
           .variable(observer(cellName))
           .define(cellName, cellReferences, cellFunction);
-      else main.redefine(cellName, cellReferences, cellFunction);
+        variables.push(tmp_variable_store);
+      } else main.redefine(cellName, cellReferences, cellFunction);
     }
   }
+  return variables;
 };
 const createModuleDefintion = async (
   moduleObject,
@@ -427,7 +448,14 @@ export class Compiler {
     }
     return {
       define(module, observer) {
-        createCellDefinition(cell, module, observer, dependencyMap, true);
+        //return [variables] when creating a cell
+        return createCellDefinition(
+          cell,
+          module,
+          observer,
+          dependencyMap,
+          true
+        );
       },
       redefine(module, observer) {
         createCellDefinition(cell, module, observer, dependencyMap, false);

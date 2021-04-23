@@ -54,7 +54,9 @@ viewof e = {
   t.equal(await main.value("c"), 12);
 
   const { define: xDefine } = await compile.cell(`x = y - 1`);
-  xDefine(main, () => true);
+  const xDefineVars = xDefine(main, () => true);
+  t.equal(xDefineVars.length, 1); //check length
+  t.equal(xDefineVars[0]._name, "x"); //check name
   await rt._compute();
 
   try {
@@ -65,7 +67,10 @@ viewof e = {
   }
 
   const { define: yDefine } = await compile.cell(`y = 101`);
-  yDefine(main, () => true);
+  const yDefineVars = yDefine(main, () => true);
+  t.equal(yDefineVars.length, 1); //check length
+  t.equal(yDefineVars[0]._name, "y"); //check name
+
   await rt._compute();
 
   t.equal(await main.value("y"), 101);
@@ -85,6 +90,34 @@ viewof e = {
   await rt._compute();
 
   t.equal(await main.value("e"), 20);
+
+  const { define: fDefine } = await compile.cell(`viewof f = {
+    let output = {};
+    let listeners = [];
+    output.value = 20;
+    output.addEventListener = (listener) => listeners.push(listener);;
+    output.removeEventListener = (listener) => {
+      listeners = listeners.filter(l => l !== listener);
+    };
+    return output;
+  }`);
+  const fDefineVars = fDefine(main, () => true);
+  t.equal(fDefineVars.length, 2); //check length
+  t.equal(fDefineVars[0]._name, "viewof f"); //check name
+  t.equal(fDefineVars[1]._name, "f"); //check name
+  await rt._compute();
+
+  t.equal(await main.value("f"), 20);
+
+  const { define: gDefine } = await compile.cell(`mutable g = 123`);
+  const gDefineVars = gDefine(main, () => true);
+  t.equal(gDefineVars.length, 3); //check length
+  t.equal(gDefineVars[0]._name, "initial g"); //check name
+  t.equal(gDefineVars[1]._name, "mutable g"); //check name
+  t.equal(gDefineVars[2]._name, "g"); //check name
+  await rt._compute();
+
+  t.equal(await main.value("g"), 123);
 
   rt.dispose();
   t.end();

@@ -150,7 +150,8 @@ const main = runtime.module(define, Inspector.into(document.body));
 
 <a href="#compile_cell" name="compile_cell">#</a>compile.<b>cell</b>(<i>contents</i>)
 
-Returns an object that has `define` and `redefine` functions that would define or redefine variables in the given cell to a specified module. `contents` is input for the [`parseCell`](https://github.com/observablehq/parser#parseCell) function. If the cell is not an ImportDeclaration, then the `redefine` functions can be used to redefine previously existing variables in a module. This is an asynchronous function because if the cell is an import, the imported notebook is fetched.
+Returns an object that has `define` and `redefine` functions that would define or redefine variables in the given cell to a specified module. `contents` is input for the [`parseCell`](https://github.com/observablehq/parser#parseCell) function. If the cell is not an ImportDeclaration, then the `redefine` functions can be used to redefine previously existing variables in a module. This is an asynchronous function because if the cell is an import, the imported notebook is fetched. 
+Note: Calling the define method will return the variables created as an array. This can be helpful to remove unnamed variables or multiple cells imported using import statements when creating an editor interface to remove previously defined variables.
 
 ```javascript
 let define, redefine;
@@ -175,7 +176,7 @@ await main.value("c"); // 22
 define(main); // would throw an error, since a is already defined in main
 
 {define} = await compile.cell(`x = 2`);
-define(main);
+define(main); // this will return an array, example:[variable_for_x]
 {define} = await compile.cell(`y = x * 4`);
 define(main);
 
