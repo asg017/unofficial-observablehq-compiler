@@ -181,12 +181,7 @@ export class Compiler {
   module(text, params = {}) {
     let m1 = parseModule(text);
 
-    if (params.treeShake)
-      m1 = computeShakenCells(
-        m1,
-        params.treeShake.targets,
-        params.treeShake.stdlib
-      );
+    if (params.treeShake) m1 = computeShakenCells(m1, params.treeShake);
 
     return createESModule(m1, {
       resolveImportPath: this.resolveImportPath,

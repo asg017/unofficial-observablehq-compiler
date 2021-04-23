@@ -291,10 +291,7 @@ test("Compiler: treeShake", async t => {
   const compile = new Compiler({ defineImportMarkdown: false });
 
   src = compile.module(initSrc, {
-    treeShake: {
-      targets: ["f"],
-      stdlib: new Set(["html"])
-    }
+    treeShake: ["f"],
   });
 
   t.equal(
@@ -316,10 +313,7 @@ d + e
   );
 
   src = compile.module(initSrc, {
-    treeShake: {
-      targets: ["f", "a"],
-      stdlib: new Set(["html"])
-    }
+    treeShake: ["f", "a"],
   });
 
   t.equal(
@@ -345,10 +339,7 @@ d + e
   );
 
   src = compile.module(initSrc, {
-    treeShake: {
-      targets: ["chart"],
-      stdlib: new Set(["html"])
-    }
+    treeShake:  ["chart"],
   });
 
   t.equal(
@@ -376,6 +367,14 @@ c
   return main;
 }`
   );
+
+  // make sure tree shaking an unreference cell just returns a define identity function.
+  t.equals(compile.module(`a = 1; b = a/1;`, {treeShake:["c"]}),     `export default function define(runtime, observer) {
+  const main = runtime.module();
+
+
+  return main;
+}`)
 
   t.end();
 });

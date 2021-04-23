@@ -14,35 +14,29 @@ function names(cell) {
   return [];
 }
 
-function references(cell, stdlibCells) {
+function references(cell) {
   if (cell.references)
-    return cell.references
-      .map(d => {
-        if (d.name) return d.name;
-        if (d.type === "ViewExpression") return `viewof ${d.id.name}`;
-        if (d.type === "MutableExpression") return `mutable ${d.id.name}`;
-        return null;
-      })
-      .filter(d => !stdlibCells.has(d));
+    return cell.references.map(d => {
+      if (d.name) return d.name;
+      if (d.type === "ViewExpression") return `viewof ${d.id.name}`;
+      if (d.type === "MutableExpression") return `mutable ${d.id.name}`;
+      return null;
+    });
 
   if (cell.body && cell.body.injections)
-    return cell.body.injections
-      .map(
-        d =>
-          `${d.view ? "viewof " : d.mutable ? "mutable " : ""}${
-            d.imported.name
-          }`
-      )
-      .filter(d => !stdlibCells.has(d));
+    return cell.body.injections.map(
+      d =>
+        `${d.view ? "viewof " : d.mutable ? "mutable " : ""}${d.imported.name}`
+    );
 
   return [];
 }
 
-function getCellRefs(module, stdlibCells) {
+function getCellRefs(module) {
   const cells = [];
   for (const cell of module.cells) {
     const ns = names(cell);
-    const refs = references(cell, stdlibCells);
+    const refs = references(cell);
     if (!ns || !ns.length) continue;
     for (const name of ns) {
       cells.push([name, refs]);
@@ -53,15 +47,18 @@ function getCellRefs(module, stdlibCells) {
   return new Map(cells);
 }
 
-export function computeShakenCells(module, targets, stdlibCells) {
-  const cellRefs = getCellRefs(module, stdlibCells);
+export function computeShakenCells(module, targets) {
+  const cellRefs = getCellRefs(module);
 
   const embed = new Set();
   const todo = targets.slice();
   while (todo.length) {
     const d = todo.pop();
     embed.add(d);
-    if (!cellRefs.has(d)) throw Error(`${d} not a defined cell in module`);
+    // happens when 1) d is an stdlib cell, 2) d doesnt have a defintion,
+    // or 3) d is in the window/global object. Let's be forgiving
+    // and let it happen
+    if (!cellRefs.has(d)) continue;
     const refs = cellRefs.get(d);
     for (const ref of refs) if (!embed.has(ref)) todo.push(ref);
   }
