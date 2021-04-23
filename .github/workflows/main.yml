@@ -1,8 +1,8 @@
 name: Deploy Demo Site
 
-on: 
+on:
   push:
-    branches: 
+    branches:
       - master
 
 jobs:
@@ -10,11 +10,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
-    - uses: actions/setup-node@v1.1.0
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v2
+      with:
+        node-version: '12'
     - run: npm install
     - run: npm run build
     - run: npm install -g surge
     - run: surge --domain unofficial-observablehq-compiler-demo.surge.sh --project .
-      env: 
+      env:
         SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
