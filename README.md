@@ -1,4 +1,4 @@
-# @alex.garcia/unofficial-observablehq-compiler
+# unofficial-observablehq-compiler
 
 An unoffical compiler _and_ interpreter for Observable notebooks (the glue between the Observable parser and runtime)
 
@@ -63,13 +63,37 @@ TODO
 
 new **Compiler**(_params_)
 
-`Compiler` is a class that encompasses all logic to compile Observable javascript code into vanilla Javascript code, as an ES module. _params_ is an optional object with the following allowed configuration:
+`Compiler` is a class that encompasses all logic to compile Observable javascript code into vanilla Javascript code, as an ES module. _params_ is an optional object with the following allowed configuration.
 
-- `resolveImportPath`: A function that, given an import path, returns a URL to where the notebook's is defined. For example, `import {chart} from "@d3/bar-chart"` would supply `path="@d3/bar-chart"`. Default imports from observablehq.com, eg `"https://api.observablehq.com/@d3/bar-chart.js?v=3"`.
-- `resolveFileAttachments`: A function that, given the name of a FileAttachment, returns the URL that the FileAttachment will be fetched from. Defaults to `name => name`.
-- `defineImportMarkdown` - A boolean, whether to define a markdown description cell for imports in the notebook. Defaults true.
-- `observeViewofValues` - A boolean, whether or not to pass in the `observer` function for viewof value cells. Defaults true.
-- `observeMutableValues` - A boolean, whether or not to pass in the `observer` function for mutable value cells. Defaults true.
+`resolveImportPath`: A function that, given an import path, returns a URL to where the notebook's is defined. For example, `import {chart} from "@d3/bar-chart"` would supply `path="@d3/bar-chart"`. Default imports from observablehq.com, eg `"https://api.observablehq.com/@d3/bar-chart.js?v=3"`.
+
+`resolveFileAttachments`: A function that, given the name of a FileAttachment, returns the URL that the FileAttachment will be fetched from. Defaults to `name => name`.
+
+`UNSAFE_allowJavascriptFileAttachments` A boolean. When true, the `resolveFileAttachments` function will resolve to raw JavaScript when calculating the value of a FileAttachment reference. This is useful if you need to use `new URL` or `import.meta.url` when determining where a FileAttachment url should resolve too. This is unsafe because the Compiler will not escape any quotes when including it in the compiled output, so do use with extreme caution when dealing with user input.
+
+```javascript
+
+// This can be unsafe since FileAttachment names can include quotes.
+// Instead, map file attachments names to something deterministic and escape-safe,
+// like SHA hashes.
+const resolveFileAttachments = name => `new URL("./files/${name}", import.meta.url)`
+
+Compiled output when:
+
+// UNSAFE_allowJavascriptFileAttachments == false
+const fileAttachments = new Map([["a", "new URL(\"./files/a\", import.meta.url)"]]);
+
+// UNSAFE_allowJavascriptFileAttachments == true
+const fileAttachments = new Map([["a", new URL("./files/a", import.meta.url)]]);
+
+
+```
+
+`defineImportMarkdown` - A boolean, whether to define a markdown description cell for imports in the notebook. Defaults true.
+
+`observeViewofValues` - A boolean, whether or not to pass in the `observer` function for viewof value cells. Defaults true.
+
+`observeMutableValues` - A boolean, whether or not to pass in the `observer` function for mutable value cells. Defaults true.
 
 compile.**module**(_source_)
 

@@ -12,6 +12,8 @@ function ESMImports(moduleObject, resolveImportPath) {
       continue;
 
     const defineName = `define${++j}`;
+    // TODO get cell specififiers here and pass in as 2nd param to resolveImportPath
+    // need to use same logic as tree-shake name()s
     const fromPath = resolveImportPath(body.source.value);
     importMap.set(body.source.value, { defineName, fromPath });
     importSrc += `import ${defineName} from "${fromPath}";\n`;
@@ -21,21 +23,44 @@ function ESMImports(moduleObject, resolveImportPath) {
   return { importSrc, importMap };
 }
 
-function ESMAttachments(moduleObject, resolveFileAttachments) {
-  const attachmentMapEntries = [];
-  // loop over cells with fileAttachments
-  for (const cell of moduleObject.cells) {
-    if (cell.fileAttachments.size === 0) continue;
-    // add filenames and resolved URLs to array
-    for (const file of cell.fileAttachments.keys())
-      attachmentMapEntries.push([file, resolveFileAttachments(file)]);
+// by default, file attachments get resolved like:
+//   [ ["a", "https://example.com/files/a"] ]
+// but sometimes, you'll want to write JS code when resolving
+// instead of being limiting by strings. The third param
+// enables that, allowing for resolving like:
+//   [ ["a", new URL("./files/a", import.meta.url)] ]
+function ESMAttachments(
+  moduleObject,
+  resolveFileAttachments,
+  UNSAFE_allowJavascriptFileAttachments = false
+) {
+  let mapValue;
+  if (UNSAFE_allowJavascriptFileAttachments) {
+    const attachmentMapEntries = [];
+    for (const cell of moduleObject.cells) {
+      if (cell.fileAttachments.size === 0) continue;
+      for (const file of cell.fileAttachments.keys())
+        attachmentMapEntries.push([file, resolveFileAttachments(file)]);
+    }
+    if (attachmentMapEntries.length)
+      mapValue = `[${attachmentMapEntries
+        .map(([key, value]) => `[${JSON.stringify(key)}, ${value}]`)
+        .join(",")}]`;
+  } else {
+    const attachmentMapEntries = [];
+    // loop over cells with fileAttachments
+    for (const cell of moduleObject.cells) {
+      if (cell.fileAttachments.size === 0) continue;
+      // add filenames and resolved URLs to array
+      for (const file of cell.fileAttachments.keys())
+        attachmentMapEntries.push([file, resolveFileAttachments(file)]);
+    }
+    if (attachmentMapEntries.length)
+      mapValue = JSON.stringify(attachmentMapEntries);
   }
 
-  return attachmentMapEntries.length === 0
-    ? ""
-    : `  const fileAttachments = new Map(${JSON.stringify(
-        attachmentMapEntries
-      )});
+  if (!mapValue) return "";
+  return `  const fileAttachments = new Map(${mapValue});
   main.builtin("FileAttachment", runtime.fileAttachments(name => fileAttachments.get(name)));`;
 }
 
@@ -140,12 +165,17 @@ function createESModule(moduleObject, params = {}) {
     resolveFileAttachments,
     defineImportMarkdown,
     observeViewofValues,
-    observeMutableValues
+    observeMutableValues,
+    UNSAFE_allowJavascriptFileAttachments
   } = params;
   const { importSrc, importMap } = ESMImports(moduleObject, resolveImportPath);
   return `${importSrc}export default function define(runtime, observer) {
   const main = runtime.module();
-${ESMAttachments(moduleObject, resolveFileAttachments)}
+${ESMAttachments(
+  moduleObject,
+  resolveFileAttachments,
+  UNSAFE_allowJavascriptFileAttachments
+)}
 ${ESMVariables(moduleObject, importMap, {
   defineImportMarkdown,
   observeViewofValues,
@@ -170,13 +200,15 @@ export class Compiler {
       resolveImportPath = defaultResolveImportPath,
       defineImportMarkdown = true,
       observeViewofValues = true,
-      observeMutableValues = true
+      observeMutableValues = true,
+      UNSAFE_allowJavascriptFileAttachments = false
     } = params;
     this.resolveFileAttachments = resolveFileAttachments;
     this.resolveImportPath = resolveImportPath;
     this.defineImportMarkdown = defineImportMarkdown;
     this.observeViewofValues = observeViewofValues;
     this.observeMutableValues = observeMutableValues;
+    this.UNSAFE_allowJavascriptFileAttachments = UNSAFE_allowJavascriptFileAttachments;
   }
   module(text, params = {}) {
     let m1 = parseModule(text);
@@ -188,7 +220,9 @@ export class Compiler {
       resolveFileAttachments: this.resolveFileAttachments,
       defineImportMarkdown: this.defineImportMarkdown,
       observeViewofValues: this.observeViewofValues,
-      observeMutableValues: this.observeMutableValues
+      observeMutableValues: this.observeMutableValues,
+      UNSAFE_allowJavascriptFileAttachments: this
+        .UNSAFE_allowJavascriptFileAttachments
     });
   }
   notebook(obj) {

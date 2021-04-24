@@ -281,6 +281,32 @@ FileAttachment("a")
   t.end();
 });
 
+test("Compiler: resolveFileAttachments UNSAFE_allowJavascriptFileAttachments", async t => {
+  function resolveFileAttachments(name) {
+    return `new URL("./path/to/${name}", import.meta.url)`;
+  }
+  let compile = new Compiler({
+    resolveFileAttachments,
+    UNSAFE_allowJavascriptFileAttachments: true
+  });
+  let src = compile.module('a = FileAttachment("a")');
+
+  t.equal(
+    src,
+    `export default function define(runtime, observer) {
+  const main = runtime.module();
+  const fileAttachments = new Map([["a", new URL("./path/to/a", import.meta.url)]]);
+  main.builtin("FileAttachment", runtime.fileAttachments(name => fileAttachments.get(name)));
+  main.variable(observer("a")).define("a", ["FileAttachment"], function(FileAttachment){return(
+FileAttachment("a")
+)});
+  return main;
+}`
+  );
+
+  t.end();
+});
+
 test("Compiler: treeShake", async t => {
   let src;
   const initSrc = `
@@ -291,7 +317,7 @@ test("Compiler: treeShake", async t => {
   const compile = new Compiler({ defineImportMarkdown: false });
 
   src = compile.module(initSrc, {
-    treeShake: ["f"],
+    treeShake: ["f"]
   });
 
   t.equal(
@@ -313,7 +339,7 @@ d + e
   );
 
   src = compile.module(initSrc, {
-    treeShake: ["f", "a"],
+    treeShake: ["f", "a"]
   });
 
   t.equal(
@@ -339,7 +365,7 @@ d + e
   );
 
   src = compile.module(initSrc, {
-    treeShake:  ["chart"],
+    treeShake: ["chart"]
   });
 
   t.equal(
@@ -369,12 +395,15 @@ c
   );
 
   // make sure tree shaking an unreference cell just returns a define identity function.
-  t.equals(compile.module(`a = 1; b = a/1;`, {treeShake:["c"]}),     `export default function define(runtime, observer) {
+  t.equals(
+    compile.module(`a = 1; b = a/1;`, { treeShake: ["c"] }),
+    `export default function define(runtime, observer) {
   const main = runtime.module();
 
 
   return main;
-}`)
+}`
+  );
 
   t.end();
 });
