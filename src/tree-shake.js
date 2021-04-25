@@ -47,7 +47,7 @@ function getCellRefs(module) {
   return new Map(cells);
 }
 
-export function computeShakenCells(module, targets) {
+export function treeShakeModule(module, targets) {
   const cellRefs = getCellRefs(module);
 
   const embed = new Set();

@@ -1,6 +1,6 @@
 import { parseCell, parseModule } from "@observablehq/parser";
 import { setupRegularCell, setupImportCell, extractPath } from "./utils";
-import { computeShakenCells } from "./tree-shake";
+import { treeShakeModule } from "./tree-shake";
 
 function ESMImports(moduleObject, resolveImportPath) {
   const importMap = new Map();
@@ -214,10 +214,10 @@ export class Compiler {
     this.observeMutableValues = observeMutableValues;
     this.UNSAFE_allowJavascriptFileAttachments = UNSAFE_allowJavascriptFileAttachments;
   }
-  module(text, params = {}) {
-    let m1 = parseModule(text);
+  module(input, params = {}) {
+    let m1 = typeof input === "string" ? parseModule(input) : input;
 
-    if (params.treeShake) m1 = computeShakenCells(m1, params.treeShake);
+    if (params.treeShake) m1 = treeShakeModule(m1, params.treeShake);
 
     return createESModule(m1, {
       resolveImportPath: this.resolveImportPath,
