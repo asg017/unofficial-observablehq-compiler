@@ -99,9 +99,11 @@ export class Interpreter {
 
     if (cell.body.type === "ImportDeclaration") {
       const path = cell.body.source.value;
-      // TODO get cell specififiers here and pass in as 2nd param to resolveImportPath
-      // need to use same logic as tree-shake name()
-      const fromModule = await this.resolveImportPath(path);
+      const specs = cell.body.specifiers.map(d => {
+        const prefix = d.view ? "viewof " : d.mutable ? "mutable " : "";
+        return `${prefix}${d.imported.name}`;
+      });
+      const fromModule = await this.resolveImportPath(path, specs);
       let mdVariable, vars;
 
       const {

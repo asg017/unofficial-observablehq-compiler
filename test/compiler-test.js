@@ -106,14 +106,17 @@ $0.value = 202
 
 test("Compiler: import cells", async t => {
   const compile = new Compiler({
-    resolveImportPath: d => `https://example.com/${d}`
+    resolveImportPath: (name, specifiers) =>
+      `https://example.com/${name}?${specifiers
+        .map(s => `specifiers=${encodeURIComponent(s)}`)
+        .join("&")}`
   });
 
   const src = compile.module(`import {a as A, b as B, c as C} from "alpha";`);
 
   t.equal(
     src,
-    `import define1 from "https://example.com/alpha";
+    `import define1 from "https://example.com/alpha?specifiers=a&specifiers=b&specifiers=c";
 
 export default function define(runtime, observer) {
   const main = runtime.module();

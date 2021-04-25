@@ -90,7 +90,8 @@ test("Interpreter: mutable cells", async t => {
 });
 
 test("Interpreter: import cells", async t => {
-  function resolveImportPath(name) {
+  function resolveImportPath(name, specifiers) {
+    const specs = new Set(specifiers);
     if (name === "alpha")
       return function define(runtime, observer) {
         const main = runtime.module();
@@ -173,6 +174,28 @@ test("Interpreter: import cells", async t => {
 
   t.end();
 });
+
+test("Interpreter: resolveImportPath specifiers", async t => {
+  function resolveImportPath(name, specifiers) {
+    t.plan(1);
+    return function define(runtime, observer) {
+      t.deepEquals(specifiers, ["a", "b", "x"]);
+      return main;
+    };
+  }
+  const interpret = new Interpreter({ resolveImportPath });
+  let runtime = new Runtime();
+  let main = runtime.module();
+  let observer = () => null;
+
+  await interpret.cell(
+    `import {a as A, b as B, x as X} from "alpha";`,
+    main,
+    observer
+  );
+  t.end();
+});
+
 test("Interpreter: defineImportMarkdown", async t => {
   function resolveImportPath(name) {
     return function define(runtime, observer) {

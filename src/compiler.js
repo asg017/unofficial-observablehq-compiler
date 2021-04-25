@@ -14,7 +14,11 @@ function ESMImports(moduleObject, resolveImportPath) {
     const defineName = `define${++j}`;
     // TODO get cell specififiers here and pass in as 2nd param to resolveImportPath
     // need to use same logic as tree-shake name()s
-    const fromPath = resolveImportPath(body.source.value);
+    const specifiers = body.specifiers.map(d => {
+      const prefix = d.view ? "viewof " : d.mutable ? "mutable " : "";
+      return `${prefix}${d.imported.name}`;
+    });
+    const fromPath = resolveImportPath(body.source.value, specifiers);
     importMap.set(body.source.value, { defineName, fromPath });
     importSrc += `import ${defineName} from "${fromPath}";\n`;
   }
