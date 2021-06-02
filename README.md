@@ -5,14 +5,14 @@ An unoffical compiler _and_ interpreter for Observable notebooks (the glue betwe
 This library has two parts: The Interpreter and the Compiler. The Interpreter will interpret "Observable syntax" into "javascript syntax" live in a javascript environment. For example:
 
 ```javascript
-import { Intepreter } from "@alex.garcia/unofficial-observablehq-compiler";
+import { Interpreter } from "@alex.garcia/unofficial-observablehq-compiler";
 import { Inspector, Runtime } from "@observablehq/runtime";
 
 async function main() {
   const runtime = new Runtime();
   const main = runtime.module();
   const observer = Inspector.into(document.body);
-  const interpret = new Intepreter({ module: main, observer });
+  const interpret = new Interpreter({ module: main, observer });
 
   await interpret.module(`
 import {text} from '@jashkenas/inputs'
